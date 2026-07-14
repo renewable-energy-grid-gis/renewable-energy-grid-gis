@@ -1,0 +1,75 @@
+---
+layout: base.njk
+---
+{% from "icons.njk" import icon %}
+{% set kids = collections.all | children(page.url) %}
+{% set sibs = collections.all | siblings(page.url) %}
+{% set parent = page.url | parentUrl %}
+{% set isSectionIndex = (parent == '/') %}
+
+<article class="article {% if isSectionIndex %}article--section{% else %}article--leaf{% endif %}">
+  <div class="container container--prose">
+    {% include "breadcrumbs.njk" %}
+
+    <div class="article-meta">
+      <span class="article-meta__chip"><span aria-hidden="true">⏱</span> {{ readingTime }} min read</span>
+      <span class="article-meta__chip article-meta__chip--muted">{{ wordCount }} words</span>
+      {% if toc.length > 1 %}
+        <button type="button" class="article-meta__toc-toggle" aria-expanded="false" aria-controls="article-toc">On this page ▾</button>
+      {% endif %}
+    </div>
+
+    {% if toc.length > 1 %}
+      <nav id="article-toc" class="article-toc" aria-label="Table of contents" hidden>
+        <div class="article-toc__title">On this page</div>
+        <ol>
+          {% for h in toc %}
+            <li class="article-toc__l{{ h.level }}"><a href="#{{ h.slug }}">{{ h.title }}</a></li>
+          {% endfor %}
+        </ol>
+      </nav>
+    {% endif %}
+
+    <div class="article-main">
+      <div class="prose">
+        {{ content | safe }}
+      </div>
+
+    {% if kids.length %}
+      <section class="related" aria-label="In this section">
+        <h2 class="related__title">Explore this section</h2>
+        <ul class="related__cards">
+          {% for kid in kids %}
+            <li>
+              <a href="{{ site.url }}{{ kid.url }}" class="related__card">
+                <span class="related__card-title">{{ collections.all | titleFor(kid.url) }}</span>
+                {% if kid.data.description %}<span class="related__card-desc">{{ kid.data.description }}</span>{% endif %}
+                <span class="related__card-arrow">{{ icon('arrow', 'currentColor') }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% elif sibs.length and not isSectionIndex %}
+      <section class="related" aria-label="Related articles">
+        <h2 class="related__title">Related articles</h2>
+        <ul class="related__cards">
+          {% for s in sibs %}
+            <li>
+              <a href="{{ site.url }}{{ s.url }}" class="related__card">
+                <span class="related__card-title">{{ collections.all | titleFor(s.url) }}</span>
+                {% if s.data.description %}<span class="related__card-desc">{{ s.data.description }}</span>{% endif %}
+                <span class="related__card-arrow">{{ icon('arrow', 'currentColor') }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if parent and parent != '/' %}
+      <p class="back-link"><a href="{{ site.url }}{{ parent }}">{{ icon('arrow', 'currentColor') }} Back to {{ collections.all | titleFor(parent) }}</a></p>
+    {% endif %}
+    </div>
+  </div>
+</article>

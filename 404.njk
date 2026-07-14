@@ -1,0 +1,30 @@
+---
+layout: base.njk
+pageTitle: Page Not Found
+description: We couldn’t find that page. The link may be outdated, or the page may have moved to a new section of the site.
+permalink: /404.html
+eleventyExcludeFromCollections: true
+noindex: true
+---
+{% from "icons.njk" import icon %}
+<section class="article">
+  <div class="container container--prose">
+    <div class="article-main">
+      <h1 style="background: linear-gradient(120deg, #1F3A60, #3D8B5F, #F4A261); -webkit-background-clip: text; background-clip: text; color: transparent;">404 · Page not found</h1>
+      <p>We couldn’t find that page. The link may be outdated, or the page may have moved.</p>
+      <p>Try one of the main sections:</p>
+      <ul class="home-cards" style="list-style:none; padding:0; display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+        {% for item in site.nav %}
+          <li class="home-card" style="--card-c: {{ item.color }};">
+            <a class="home-card__head" href="{{ site.url }}{{ item.url }}" style="text-decoration:none; color:inherit;">
+              {{ icon(item.icon, item.color) }}
+              <h3>{{ item.label }}</h3>
+            </a>
+            <p>{{ item.blurb }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="back-link" style="margin-top:2rem;"><a href="{{ site.url }}/">{{ icon('arrow', 'currentColor') }} Back to home</a></p>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,31 @@
+{% from "icons.njk" import icon %}
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__brand">
+      <img src="/assets/logo-mark.svg" alt="" width="44" height="44">
+      <p>{{ site.title }}</p>
+      <p class="site-footer__tag">{{ site.description }}</p>
+    </div>
+    <nav class="site-footer__nav" aria-label="Sitemap">
+      {% for item in site.nav %}
+        <div class="site-footer__col">
+          <a class="site-footer__col-head" href="{{ site.url }}{{ item.url }}">
+            {{ icon(item.icon, item.color) }}<span>{{ item.label }}</span>
+          </a>
+          <ul>
+            {% set kids = collections.all | children(item.url) %}
+            {% for kid in kids %}
+              <li><a href="{{ site.url }}{{ kid.url }}">{{ collections.all | titleFor(kid.url) }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </nav>
+    <div class="site-footer__social">
+      <a href="https://github.com/renewable-energy-grid-gis" class="site-footer__social-link" aria-label="{{ site.shortTitle }} on GitHub" rel="noopener">
+        {{ icon('github') }}<span>GitHub</span>
+      </a>
+    </div>
+    <p class="site-footer__legal">© <span id="footer-year">2026</span> {{ site.shortTitle }}.</p>
+  </div>
+</footer>

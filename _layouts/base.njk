@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="{{ site.lang }}">
+<head>
+{% include "head.njk" %}
+</head>
+<body class="{{ bodyClass or '' }}">
+{% include "header.njk" %}
+<main id="main" class="site-main">
+  {% block content %}{{ content | safe }}{% endblock %}
+</main>
+{% include "footer.njk" %}
+<script src="/js/site.js?v={{ assets.siteJs }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{%- for entry in collections.all -%}
+{%- if entry.url and not entry.data.eleventyExcludeFromCollections and not entry.data.noindex -%}
+{%- set lastmod = entry.date and entry.date.toISOString and entry.date.toISOString() -%}
+{%- set depth = (entry.url.split('/') | length) - 2 -%}
+{%- set priority = '1.0' if entry.url == '/' else ('0.9' if depth == 1 else ('0.8' if depth == 2 else '0.7')) -%}
+  <url>
+    <loc>{{ site.url }}{{ entry.url }}</loc>
+    {%- if lastmod %}
+    <lastmod>{{ lastmod }}</lastmod>
+    {%- endif %}
+    <changefreq>monthly</changefreq>
+    <priority>{{ priority }}</priority>
+  </url>
+{%- endif -%}
+{%- endfor %}
+</urlset>

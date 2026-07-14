@@ -1,0 +1,31 @@
+/**
+ * Cloudflare Worker config for renewable-energy-grid-gis.org
+ *
+ * This is an "assets-only" Worker: the built static site in ./_site is served
+ * directly by Cloudflare's static-assets layer. No JS runs on each request
+ * unless we add a `main` entry — keeps cold starts at zero.
+ *
+ * Deploy:   npm run deploy
+ * Preview:  npx wrangler dev
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "renewable-energy-grid-gis-org",
+  "compatibility_date": "2025-01-15",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "assets": {
+    "directory": "./_site",
+    // Auto-resolve /foo/ -> /foo/index.html and /foo -> 301 /foo/.
+    "html_handling": "auto-trailing-slash",
+    // When a path doesn't match a file, serve /404.html with a 404 status.
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true
+  }
+  // To attach a custom domain after the first deploy, uncomment and edit:
+  // ,"routes": [
+  //   { "pattern": "renewable-energy-grid-gis.org", "custom_domain": true },
+  //   { "pattern": "www.renewable-energy-grid-gis.org", "custom_domain": true }
+  // ]
+}

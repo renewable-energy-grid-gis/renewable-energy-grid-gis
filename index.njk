@@ -1,0 +1,63 @@
+---
+layout: base.njk
+pageTitle: Python for Renewable Energy & Grid GIS Automation
+description: A production-focused resource for spatial workflows, compliance automation, and scalable geospatial pipelines in the renewable energy sector.
+eleventyExcludeFromCollections: false
+---
+{% from "icons.njk" import icon %}
+
+<section class="home-hero">
+  <div class="container home-hero__inner">
+    <img class="home-hero__logo" src="/assets/logo.svg" alt="{{ site.title }}" width="480" height="160">
+    <h1>Python for Renewable Energy &amp; Grid GIS Automation</h1>
+    <p class="home-hero__tag">{{ site.description }}</p>
+    <p class="home-hero__intro">
+      Solar irradiance mapping, wind resource assessment, grid proximity analysis, site suitability scoring, compliance reporting, and batch pipeline sync — all built with reproducible, memory-aware Python. This site is a working library for energy analysts, GIS developers, project developers, and environmental technology teams who deploy spatial workflows to production rather than the desktop.
+    </p>
+    <p class="home-hero__intro">
+      Each section walks through a deterministic pipeline stage: coordinate-reference governance, raster &amp; vector ingestion, validation gates, network topology, and audit-ready outputs. Code is annotated, tested in real workflows, and tuned for cloud-scale execution against multi-gigabyte energy datasets.
+    </p>
+    <div class="home-ctas">
+      {% for item in site.nav %}
+        <a class="home-cta" href="{{ site.url }}{{ item.url }}" style="--cta-bg: {{ item.color }}1A;">
+          <span class="home-cta__icon" style="background: {{ item.color }}22;">
+            {{ icon(item.icon, item.color) }}
+          </span>
+          <span class="home-cta__text">
+            <span class="home-cta__title">{{ item.label }}</span>
+            <span class="home-cta__desc">{{ item.blurb }}</span>
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <div class="container">
+    <h2>What you’ll find inside</h2>
+    <p class="home-section__lede">
+      Three deeply linked content tracks — each starting with an architectural overview and branching into focused, reproducible patterns: PV yield simulation, interconnection queue screening, terrain shading, cloud data ingestion, and quick-reference tables for projections, spatial indexes, and resampling kernels.
+    </p>
+    <ul class="home-cards" style="list-style:none; padding:0;">
+      {% for item in site.nav %}
+        {% set kids = collections.all | children(item.url) %}
+        <li class="home-card" style="--card-c: {{ item.color }};">
+          <a class="home-card__head" href="{{ site.url }}{{ item.url }}" style="text-decoration:none; color:inherit;">
+            {{ icon(item.icon, item.color) }}
+            <h3>{{ item.label }}</h3>
+          </a>
+          <p>{{ item.blurb }}</p>
+          {% if kids.length %}
+            <ul style="list-style:none; padding:0; margin:.5rem 0 0; display:grid; gap:.25rem;">
+              {% for kid in kids %}
+                <li><a href="{{ site.url }}{{ kid.url }}" style="font-size:.92rem;">{{ collections.all | titleFor(kid.url) }}</a></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          <a class="home-card__more" href="{{ site.url }}{{ item.url }}">Open section {{ icon('arrow', 'currentColor') }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>

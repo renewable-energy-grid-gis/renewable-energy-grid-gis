@@ -1,0 +1,33 @@
+{% from "icons.njk" import icon %}
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header" id="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="{{ site.url }}/" aria-label="{{ site.shortTitle }} — Home">
+      <img src="/assets/logo-mark.svg" alt="" width="36" height="36" class="site-header__logo">
+      <span class="site-header__brand-text">
+        <span class="site-header__brand-1">Renewable Energy</span>
+        <span class="site-header__brand-2">&amp; Grid GIS</span>
+      </span>
+    </a>
+    <button type="button" class="site-header__toggle" aria-controls="primary-nav" aria-expanded="false">
+      {{ icon('menu') }}
+      <span class="visually-hidden">Open menu</span>
+    </button>
+    <nav class="site-nav" id="primary-nav" aria-label="Primary">
+      <ul class="site-nav__list">
+        <li>
+          <a href="{{ site.url }}/" class="site-nav__link {% if page.url == '/' %}is-active{% endif %}">
+            {{ icon('home', '#1F3A60') }}<span>Home</span>
+          </a>
+        </li>
+        {% for item in site.nav %}
+          <li>
+            <a href="{{ site.url }}{{ item.url }}" class="site-nav__link {% if page.url and page.url.startsWith(item.url) %}is-active{% endif %}">
+              {{ icon(item.icon, item.color) }}<span>{{ item.label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+</header>

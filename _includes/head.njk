@@ -1,0 +1,130 @@
+{% set pageDesc = description or site.description %}
+{% set pageTitleFull = (pageTitle or title) + ' · ' + site.shortTitle if (pageTitle or title) else site.title %}
+{# SEO title: keep HTML-encoded length under 65 chars; compact brand suffix for non-home pages #}
+{% set _pt = pageTitle or title %}
+{% set _suffix = ' · RE & Grid GIS' %}
+{% set _titleCandidate = _pt + _suffix if _pt else site.title %}
+{% set pageTitleSeo = _titleCandidate if (_titleCandidate | htmlLen) <= 65 else (_pt if (_pt | htmlLen) <= 65 else _pt | truncate(62, true, '…')) %}
+{% set absUrl = site.url + page.url %}
+{% set isHome = page.url == '/' %}
+{% set isArticle = page.url.startsWith('/') and not isHome and not noindex %}
+{% set crumbs = page.url | breadcrumbs %}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ pageTitleSeo }}</title>
+<meta name="description" content="{{ pageDesc }}">
+<link rel="canonical" href="{{ absUrl }}">
+{% if noindex %}<meta name="robots" content="noindex,follow">{% else %}<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">{% endif %}
+<meta name="author" content="{{ site.shortTitle }}">
+<meta name="generator" content="Eleventy">
+
+<meta property="og:type" content="{% if isArticle %}article{% else %}website{% endif %}">
+<meta property="og:title" content="{{ pageTitleFull }}">
+<meta property="og:description" content="{{ pageDesc }}">
+<meta property="og:url" content="{{ absUrl }}">
+<meta property="og:site_name" content="{{ site.shortTitle }}">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="{{ site.url }}/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ site.shortTitle }} — spatial workflows and grid GIS automation">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ pageTitleFull }}">
+<meta name="twitter:description" content="{{ pageDesc }}">
+<meta name="twitter:image" content="{{ site.url }}/assets/og-image.png">
+
+<meta name="theme-color" content="{{ site.themeColor }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="{{ site.shortTitle }}">
+
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16.png">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+
+<link rel="stylesheet" href="/css/main.css?v={{ assets.mainCss }}">
+<link rel="stylesheet" href="/css/katex.min.css?v={{ assets.katexCss }}">
+
+{# ---------- Structured data (JSON-LD) ---------- #}
+{# Always emit Organization + WebSite #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "{{ site.url }}/#org",
+  "name": {{ site.title | dump | safe }},
+  "url": "{{ site.url }}/",
+  "logo": {
+    "@type": "ImageObject",
+    "url": "{{ site.url }}/assets/icons/icon-512.png",
+    "width": 512,
+    "height": 512
+  },
+  "image": "{{ site.url }}/assets/og-image.png"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "{{ site.url }}/#website",
+  "url": "{{ site.url }}/",
+  "name": {{ site.shortTitle | dump | safe }},
+  "description": {{ site.description | dump | safe }},
+  "inLanguage": "en",
+  "publisher": { "@id": "{{ site.url }}/#org" }
+}
+</script>
+
+{# BreadcrumbList for any page below the homepage #}
+{% if crumbs and crumbs.length > 1 %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {% for c in crumbs %}
+    {
+      "@type": "ListItem",
+      "position": {{ loop.index }},
+      "name": {{ c.title | dump | safe }},
+      "item": "{{ site.url }}{{ c.url }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endif %}
+
+{# TechArticle for content pages — anything under /<section>/ that isn't excluded #}
+{% if isArticle %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": {{ (pageTitle or title) | dump | safe }},
+  "description": {{ pageDesc | dump | safe }},
+  "mainEntityOfPage": { "@type": "WebPage", "@id": "{{ absUrl }}" },
+  "url": "{{ absUrl }}",
+  "inLanguage": "en",
+  "isPartOf": { "@id": "{{ site.url }}/#website" },
+  "publisher": { "@id": "{{ site.url }}/#org" },
+  "image": "{{ site.url }}/assets/og-image.png"{% if wordCount %},
+  "wordCount": {{ wordCount }}{% endif %}{% if readingTime %},
+  "timeRequired": "PT{{ readingTime }}M"{% endif %}{% if site.lastBuild %},
+  "dateModified": "{{ site.lastBuild }}"{% endif %},
+  "about": [
+    { "@type": "Thing", "name": "Geographic Information Systems" },
+    { "@type": "Thing", "name": "Renewable Energy" },
+    { "@type": "Thing", "name": "Python" }
+  ],
+  "audience": {
+    "@type": "Audience",
+    "audienceType": "Energy analysts, GIS developers, project developers, environmental technology teams"
+  }
+}
+</script>
+{% endif %}

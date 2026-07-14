@@ -1,0 +1,32 @@
+{
+  "title": "Python for Renewable Energy & Grid GIS Automation",
+  "shortTitle": "Renewable Energy & Grid GIS",
+  "url": "https://www.renewable-energy-grid-gis.org",
+  "description": "A production-focused resource for spatial workflows, compliance automation, and scalable geospatial pipelines in the renewable energy sector.",
+  "themeColor": "#1F3A60",
+  "backgroundColor": "#F4F8FB",
+  "lang": "en",
+  "nav": [
+    {
+      "label": "Core GIS Fundamentals",
+      "url": "/core-energy-gis-data-spatial-fundamentals/",
+      "icon": "globe",
+      "color": "#345B8B",
+      "blurb": "CRS alignment, topology, validation, and ingestion patterns for production energy-GIS pipelines."
+    },
+    {
+      "label": "Solar & Wind Modeling",
+      "url": "/solar-wind-resource-modeling-workflows/",
+      "icon": "sun",
+      "color": "#F4A261",
+      "blurb": "Irradiance rasters, wind shear, terrain shadow, and temporal aggregation workflows."
+    },
+    {
+      "label": "Grid Infrastructure",
+      "url": "/grid-infrastructure-network-proximity-analysis/",
+      "icon": "grid",
+      "color": "#3D8B5F",
+      "blurb": "Transmission mapping, proximity buffers, capacity analysis, and network attribute validation."
+    }
+  ]
+}
