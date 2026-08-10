@@ -28,6 +28,7 @@ Four compounding causes account for nearly every broken kriging surface built fr
 4. **Ignoring the elevation trend.** Wind speed climbs with exposure and elevation. Ordinary kriging assumes a constant mean across the domain, so over a ridge-and-valley prospect it systematically under-predicts the ridges and over-predicts the valleys. When speed is correlated with terrain, the mean is not stationary and you need **universal (regression) kriging** with an elevation drift term instead.
 
 <svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-column map of four met-mast kriging failure modes to their fixes. Kriging in geographic CRS EPSG 4326, whose variogram range is in degrees, is fixed by reprojecting masts to metric CRS EPSG 32614 so the range is in metres. Too few masts to fit a stable variogram is fixed by an inverse-distance-weighting fallback that needs no variogram. Prediction beyond the convex hull, an unbounded extrapolation, is fixed by clipping to the hull and flagging cells of high kriging variance. Elevation trend ignored by ordinary kriging, which biases ridges and valleys, is fixed by universal kriging with an elevation drift term." style="width:100%;max-width:900px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="900" height="430"/>
   <title>Four sparse-kriging failure modes mapped to their fixes</title>
   <desc>A table of four rows. Each left cell states a failure cause and each right cell states the correction, with an arrow from cause to fix. Row one: kriging run in a geographic CRS with a variogram range in degrees is corrected by reprojecting masts to metric CRS EPSG 32614. Row two: too few masts to fit a stable variogram is corrected by an inverse-distance-weighting fallback needing no variogram. Row three: prediction beyond the convex hull as an unbounded extrapolation is corrected by clipping to the hull and flagging high kriging variance. Row four: elevation trend ignored by ordinary kriging is corrected by universal kriging with an elevation drift term.</desc>
   <defs>
@@ -75,6 +76,68 @@ Four compounding causes account for nearly every broken kriging surface built fr
 ## Pre-flight validation
 
 Every one of those causes is cheaper to catch before the variogram is fitted than after a wrong surface has propagated into a yield model. The validator below enforces a projected metric CRS, collapses coincident masts that would make the kriging matrix singular, and refuses to proceed when too few unique points remain for a stable fit.
+
+<svg viewBox="0 0 940 400" role="img" aria-label="An experimental variogram and the spherical model fitted to it, for hub-height wind speed across 14 met masts. Semivariance rises from a nugget of 0.15 at zero separation to a sill of 1.05 at a range of 12 kilometres, beyond which pairs of masts carry no mutual information. The three parameters are what kriging actually uses: the nugget is measurement noise plus micro-scale variation, the range is how far a mast can speak for, and the sill is the field variance." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Nugget, range and sill — the three numbers kriging runs on</title>
+  <desc>A variogram plot with lag distance from 0 to 25 kilometres on the horizontal axis and semivariance from 0 to 1.3 on the vertical. Experimental points computed from binned mast pairs rise from about 0.2 at short lags to a plateau near 1.05 beyond 12 kilometres. A fitted spherical model runs through them, with the nugget of 0.15 marked at the intercept, the range of 12 kilometres marked where the model reaches its plateau, and the sill of 1.05 marked as the plateau value. Annotations explain what each parameter means for interpolation.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="vg-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">14 met masts: the experimental variogram and its spherical fit</text>
+  <line x1="110" y1="292" x2="700" y2="292" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="110" y1="68" x2="110" y2="292" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="106" y1="292.0" x2="700" y2="292.0" stroke="currentColor" stroke-width="0.8" opacity="0.16"/>
+  <text x="100" y="296.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0.0</text>
+  <line x1="106" y1="208.15384615384616" x2="700" y2="208.15384615384616" stroke="currentColor" stroke-width="0.8" opacity="0.16"/>
+  <text x="100" y="212.15384615384616" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0.5</text>
+  <line x1="106" y1="124.30769230769232" x2="700" y2="124.30769230769232" stroke="currentColor" stroke-width="0.8" opacity="0.16"/>
+  <text x="100" y="128.30769230769232" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">1.0</text>
+  <line x1="110.0" y1="292" x2="110.0" y2="297" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="110.0" y="312" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">0</text>
+  <line x1="228.0" y1="292" x2="228.0" y2="297" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="228.0" y="312" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">5</text>
+  <line x1="346.0" y1="292" x2="346.0" y2="297" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="346.0" y="312" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">10</text>
+  <line x1="464.0" y1="292" x2="464.0" y2="297" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="464.0" y="312" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">15</text>
+  <line x1="582.0" y1="292" x2="582.0" y2="297" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="582.0" y="312" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">20</text>
+  <line x1="700.0" y1="292" x2="700.0" y2="297" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="700.0" y="312" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">25</text>
+  <text x="700" y="334" text-anchor="end" font-size="11.5" fill="currentColor" opacity="0.8">lag distance, km</text>
+  <text x="100" y="60" text-anchor="start" font-size="11" fill="currentColor" opacity="0.8">semivariance</text>
+  <path d="M110.0,266.8 L112.4,265.0 L114.7,263.1 L117.1,261.2 L119.4,259.3 L121.8,257.4 L124.2,255.5 L126.5,253.7 L128.9,251.8 L131.2,249.9 L133.6,248.0 L136.0,246.2 L138.3,244.3 L140.7,242.4 L143.0,240.6 L145.4,238.7 L147.8,236.8 L150.1,235.0 L152.5,233.1 L154.8,231.3 L157.2,229.5 L159.6,227.6 L161.9,225.8 L164.3,224.0 L166.6,222.2 L169.0,220.4 L171.4,218.6 L173.7,216.8 L176.1,215.0 L178.4,213.2 L180.8,211.4 L183.2,209.7 L185.5,207.9 L187.9,206.2 L190.2,204.4 L192.6,202.7 L195.0,201.0 L197.3,199.3 L199.7,197.6 L202.0,195.9 L204.4,194.2 L206.8,192.5 L209.1,190.8 L211.5,189.2 L213.8,187.6 L216.2,185.9 L218.6,184.3 L220.9,182.7 L223.3,181.1 L225.6,179.5 L228.0,178.0 L230.4,176.4 L232.7,174.9 L235.1,173.4 L237.4,171.8 L239.8,170.4 L242.2,168.9 L244.5,167.4 L246.9,165.9 L249.2,164.5 L251.6,163.1 L254.0,161.7 L256.3,160.3 L258.7,158.9 L261.0,157.6 L263.4,156.2 L265.8,154.9 L268.1,153.6 L270.5,152.3 L272.8,151.0 L275.2,149.8 L277.6,148.5 L279.9,147.3 L282.3,146.1 L284.6,144.9 L287.0,143.8 L289.4,142.6 L291.7,141.5 L294.1,140.4 L296.4,139.3 L298.8,138.3 L301.2,137.2 L303.5,136.2 L305.9,135.2 L308.2,134.3 L310.6,133.3 L313.0,132.4 L315.3,131.5 L317.7,130.6 L320.0,129.7 L322.4,128.9 L324.8,128.1 L327.1,127.3 L329.5,126.5 L331.8,125.8 L334.2,125.1 L336.6,124.4 L338.9,123.7 L341.3,123.1 L343.6,122.5 L346.0,121.9 L348.4,121.3 L350.7,120.8 L353.1,120.3 L355.4,119.8 L357.8,119.3 L360.2,118.9 L362.5,118.5 L364.9,118.1 L367.2,117.8 L369.6,117.5 L372.0,117.2 L374.3,116.9 L376.7,116.7 L379.0,116.5 L381.4,116.3 L383.8,116.2 L386.1,116.1 L388.5,116.0 L390.8,115.9 L393.2,115.9 L395.6,115.9 L397.9,115.9 L400.3,115.9 L402.6,115.9 L405.0,115.9 L407.4,115.9 L409.7,115.9 L412.1,115.9 L414.4,115.9 L416.8,115.9 L419.2,115.9 L421.5,115.9 L423.9,115.9 L426.2,115.9 L428.6,115.9 L431.0,115.9 L433.3,115.9 L435.7,115.9 L438.0,115.9 L440.4,115.9 L442.8,115.9 L445.1,115.9 L447.5,115.9 L449.8,115.9 L452.2,115.9 L454.6,115.9 L456.9,115.9 L459.3,115.9 L461.6,115.9 L464.0,115.9 L466.4,115.9 L468.7,115.9 L471.1,115.9 L473.4,115.9 L475.8,115.9 L478.2,115.9 L480.5,115.9 L482.9,115.9 L485.2,115.9 L487.6,115.9 L490.0,115.9 L492.3,115.9 L494.7,115.9 L497.0,115.9 L499.4,115.9 L501.8,115.9 L504.1,115.9 L506.5,115.9 L508.8,115.9 L511.2,115.9 L513.6,115.9 L515.9,115.9 L518.3,115.9 L520.6,115.9 L523.0,115.9 L525.4,115.9 L527.7,115.9 L530.1,115.9 L532.4,115.9 L534.8,115.9 L537.2,115.9 L539.5,115.9 L541.9,115.9 L544.2,115.9 L546.6,115.9 L549.0,115.9 L551.3,115.9 L553.7,115.9 L556.0,115.9 L558.4,115.9 L560.8,115.9 L563.1,115.9 L565.5,115.9 L567.8,115.9 L570.2,115.9 L572.6,115.9 L574.9,115.9 L577.3,115.9 L579.6,115.9 L582.0,115.9 L584.4,115.9 L586.7,115.9 L589.1,115.9 L591.4,115.9 L593.8,115.9 L596.2,115.9 L598.5,115.9 L600.9,115.9 L603.2,115.9 L605.6,115.9 L608.0,115.9 L610.3,115.9 L612.7,115.9 L615.0,115.9 L617.4,115.9 L619.8,115.9 L622.1,115.9 L624.5,115.9 L626.8,115.9 L629.2,115.9 L631.6,115.9 L633.9,115.9 L636.3,115.9 L638.6,115.9 L641.0,115.9 L643.4,115.9 L645.7,115.9 L648.1,115.9 L650.4,115.9 L652.8,115.9 L655.2,115.9 L657.5,115.9 L659.9,115.9 L662.2,115.9 L664.6,115.9 L667.0,115.9 L669.3,115.9 L671.7,115.9 L674.0,115.9 L676.4,115.9 L678.8,115.9 L681.1,115.9 L683.5,115.9 L685.8,115.9 L688.2,115.9 L690.6,115.9 L692.9,115.9 L695.3,115.9 L697.6,115.9 L700.0,115.9" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <circle cx="138.32" cy="240.01538461538462" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="176.07999999999998" cy="214.86153846153846" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="206.76" cy="188.03076923076924" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="249.24" cy="167.90769230769232" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="289.36" cy="144.43076923076924" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="331.84000000000003" cy="129.33846153846156" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="374.32" cy="120.95384615384614" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="435.68" cy="109.21538461538461" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="497.03999999999996" cy="122.63076923076923" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="560.76" cy="112.56923076923076" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="643.36" cy="119.27692307692308" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <line x1="110" y1="266.84615384615387" x2="157.2" y2="266.84615384615387" stroke="#F4A261" stroke-width="1.6"/>
+  <text x="166.64" y="270.84615384615387" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">nugget 0.15</text>
+  <line x1="393.2" y1="292.0" x2="393.2" y2="115.9230769230769" stroke="#F4A261" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="401.2" y="233.30769230769232" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">range 12 km</text>
+  <line x1="110" y1="115.9230769230769" x2="700" y2="115.9230769230769" stroke="#F4A261" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.7"/>
+  <text x="694" y="107.9230769230769" text-anchor="end" font-size="11" fill="#7A4A1A" font-weight="700">sill 1.05</text>
+  <rect x="720" y="78" width="196" height="65" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="818.0" y="99" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">nugget</text>
+  <text x="818.0" y="116" text-anchor="middle" font-size="11" fill="currentColor">sensor noise +</text>
+  <text x="818.0" y="133" text-anchor="middle" font-size="11" fill="currentColor">micro-scale variation</text>
+  <rect x="720" y="170" width="196" height="65" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="818.0" y="191" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">range</text>
+  <text x="818.0" y="208" text-anchor="middle" font-size="11" fill="currentColor">how far one mast</text>
+  <text x="818.0" y="225" text-anchor="middle" font-size="11" fill="currentColor">can speak for</text>
+  <rect x="720" y="262" width="196" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="818.0" y="283" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">sill</text>
+  <text x="818.0" y="300" text-anchor="middle" font-size="11" fill="currentColor">the field variance</text>
+  <rect x="110" y="336" width="590" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="405.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor">A model fitted by eye is still a model — record the three</text>
+  <text x="405.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">parameters with the surface, or it cannot be challenged.</text>
+</svg>
 
 ```python
 import numpy as np
@@ -181,6 +244,71 @@ Inverse-distance weighting predicts the same weighted average, $\hat{Z}(x_0) = \
 ## Downstream validation
 
 Before the surface feeds a resource assessment, gate it. This assertion checks that predictions stay physically plausible, confirms the variance was actually returned, and — the key protection against silent extrapolation — masks every cell that falls outside the convex hull of the masts or whose kriging variance blows past a multiple of the observed variance. It is suitable for a CI/CD job that blocks a release when the surface regresses.
+
+<svg viewBox="0 0 940 412" role="img" aria-label="Kriging returns two surfaces and the second one is the honest part. Prediction variance is near the nugget at each mast and grows with distance from the network, exceeding the sill wherever the interpolation is effectively extrapolating. Publishing only the predicted wind-speed surface hides that a turbine position 18 kilometres from the nearest mast carries roughly six times the uncertainty of one sited between two masts." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The prediction surface and the variance surface, side by side</title>
+  <desc>Two maps of the same area. The left map is the predicted hub-height wind speed, a smooth field with fourteen mast positions marked. The right map is the kriging variance over the same extent: low near each mast, rising through the gaps between them, and highest in the north-east corner where no mast lies within the variogram range. Two candidate turbine positions are marked on both maps: one between two masts with a variance near 0.2, and one 18 kilometres from the nearest mast with a variance near 1.2.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="412"/>
+  <defs><marker id="kv-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Prediction and variance are two outputs of one solve</text>
+  <text x="240.0" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">predicted hub-height wind speed</text>
+  <rect x="40" y="76" width="400" height="240" rx="6" fill="none" stroke="#5BA8C8" stroke-width="1.3"/>
+  <path d="M46,102 C170,88 310,120 434,98" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <path d="M46,132 C170,118 310,150 434,128" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <path d="M46,162 C170,148 310,180 434,158" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <path d="M46,192 C170,178 310,210 434,188" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <path d="M46,222 C170,208 310,240 434,218" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <path d="M46,252 C170,238 310,270 434,248" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <path d="M46,282 C170,268 310,300 434,278" fill="none" stroke="#5BA8C8" stroke-width="1.4" opacity="0.35"/>
+  <text x="130" y="240" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">7.2 m/s</text>
+  <text x="340" y="130" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">8.6 m/s</text>
+  <circle cx="96.0" cy="263.20000000000005" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="168.0" cy="280.0" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="136.0" cy="200.8" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="216.0" cy="229.6" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="88.0" cy="167.2" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="184.0" cy="148.0" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="272.0" cy="258.4" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="248.0" cy="176.8" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="312.0" cy="205.60000000000002" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="128.0" cy="114.4" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="224.0" cy="104.8" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="288.0" cy="133.6" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="160.0" cy="234.39999999999998" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="240.0" cy="287.2" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="200.0" cy="244.0" r="7" fill="none" stroke="#3D8B5F" stroke-width="2"/>
+  <circle cx="384.0" cy="100.0" r="7" fill="none" stroke="#C85B5B" stroke-width="2"/>
+  <text x="700.0" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">kriging variance</text>
+  <rect x="500" y="76" width="400" height="240" rx="6" fill="none" stroke="#F4A261" stroke-width="1.3"/>
+  <path d="M900,76 L900,316.0 L900.0,76 Z" fill="#FFE3BE" stroke="none" stroke-width="1.4" opacity="0.1"/>
+  <path d="M900,76 L900,263.20000000000005 L812.0,76 Z" fill="#FFE3BE" stroke="none" stroke-width="1.4" opacity="0.16"/>
+  <path d="M900,76 L900,210.4 L724.0,76 Z" fill="#FFE3BE" stroke="none" stroke-width="1.4" opacity="0.26"/>
+  <path d="M900,76 L900,157.60000000000002 L636.0,76 Z" fill="#FFE3BE" stroke="none" stroke-width="1.4" opacity="0.4"/>
+  <text x="816" y="116" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">no mast within</text>
+  <text x="816" y="134" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">the 12 km range</text>
+  <circle cx="556.0" cy="263.20000000000005" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="628.0" cy="280.0" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="596.0" cy="200.8" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="676.0" cy="229.6" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="548.0" cy="167.2" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="644.0" cy="148.0" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="732.0" cy="258.4" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="708.0" cy="176.8" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="772.0" cy="205.60000000000002" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="588.0" cy="114.4" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="684.0" cy="104.8" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="748.0" cy="133.6" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="620.0" cy="234.39999999999998" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="700.0" cy="287.2" r="3.4" fill="currentColor" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="660.0" cy="244.0" r="7" fill="none" stroke="#3D8B5F" stroke-width="2"/>
+  <circle cx="844.0" cy="100.0" r="7" fill="none" stroke="#C85B5B" stroke-width="2"/>
+  <rect x="40" y="336" width="400" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="240.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">turbine A — between two masts</text>
+  <text x="240.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">variance 0.19 · ±0.4 m/s at 95%</text>
+  <rect x="500" y="336" width="400" height="48" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="700.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">turbine B — 18 km from the nearest mast</text>
+  <text x="700.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">variance 1.21 · ±1.1 m/s at 95%</text>
+</svg>
 
 ```python
 import numpy as np

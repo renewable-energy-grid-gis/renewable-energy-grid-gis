@@ -28,6 +28,7 @@ Four independent errors corrupt this calculation, each mapping to a distinct cor
 4. **Mixing kW and kWh, MW and MWh.** Power in kW summed over hourly steps yields kWh; rated power quoted in MW must be scaled to the same unit before the ratio. A single unhandled factor of 1000 is the fastest route to a capacity factor of `1340%`.
 
 <svg viewBox="0 0 880 372" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Failure-to-correction flow for capacity factor computation. Four failure modes on the left — a timezone-naive index across DST, taking a mean instead of the energy sum with irregular sampling, missing hours with a wrong leap-year hour count, and mixing kW with kWh — each map by an arrow to a corrective stage in the middle: a tz-aware UTC index, an energy integral of power times delta-t, a boundary-derived hour count that yields 8784 in leap years, and explicit kW-to-MWh unit scaling. The four stages converge into a single validated output node on the right, a capacity-factor table bounded between zero and one with a coverage mask." style="width:100%;max-width:880px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="880" height="372"/>
   <title>Four capacity-factor failure modes mapped to their corrective stages</title>
   <desc>A left-to-right flow diagram. The left column lists four dashed-border failure nodes: timezone-naive index with DST double-count or gap; mean instead of the energy sum with irregular delta-t; missing hours with an 8760-versus-8784 leap-year error; and kW mixed with kWh causing a factor-of-1000 blow-up. Each maps by an arrow to a solid corrective node in the middle column: localize to a tz-aware UTC index and dedupe DST; integrate energy as the sum of power times delta-t in kWh; derive the hour count from period boundaries so leap years give 8784; and scale units explicitly from kW to MWh against MW rated power. The four corrective stages converge through a shared bus into a single highlighted output node on the right: a capacity-factor table bounded between 0 and 1 with a coverage mask and audit metadata.</desc>
   <defs>
@@ -138,6 +139,32 @@ def preflight_generation_series(gen_kw: pd.Series, interval_hours: float = 1.0) 
 
 The corrected function normalises to UTC, integrates energy as `ΣP·Δt` in explicit units, derives each period's hour count from its own calendar boundaries so leap years resolve to `8784`, and masks periods whose coverage falls below a threshold rather than reporting them as low output. Parameter choices are justified for energy use: `freq="YS"` gives year-start annual periods for the headline number, `interval_hours` makes the sample step explicit in the integral, and `max_gap_frac=0.05` refuses a capacity factor when more than 5% of expected hours are missing.
 
+<svg viewBox="0 0 940 392" role="img" aria-label="A capacity factor is one division with three chances to be wrong. The numerator is metered energy — 262,800 megawatt-hours — which must be net of parasitic load and curtailment if the figure is to be comparable. The denominator is nameplate capacity times hours: 100 megawatts AC times 8,760 hours. Using DC capacity instead of AC inflates the denominator by the DC to AC ratio and drops the reported factor from 30.0 percent to 24.0." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>One division, three places it goes wrong</title>
+  <desc>A worked capacity factor calculation shown as a fraction. The numerator is 262,800 megawatt-hours of metered net energy, annotated with the two adjustments it must already include: parasitic load and curtailed energy. The denominator is 100 megawatts AC times 8,760 hours, or 876,000 megawatt-hours, annotated with the warning that using the 125 megawatt DC rating instead gives 1,095,000 and a reported capacity factor of 24.0 percent rather than 30.0. The result, 30.0 percent, is shown alongside the alternative figure.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="cfx-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">CF = net metered energy ÷ (rated capacity × hours in period)</text>
+  <rect x="60" y="70" width="480" height="68" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="300" y="100" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">262 800 MWh metered net energy</text>
+  <text x="300" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">after parasitic load and curtailment</text>
+  <line x1="60" y1="152" x2="540" y2="152" stroke="currentColor" stroke-width="2" opacity="0.7"/>
+  <rect x="60" y="166" width="480" height="68" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="300" y="196" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">100 MW AC × 8 760 h = 876 000 MWh</text>
+  <text x="300" y="218" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">the AC point of interconnection rating</text>
+  <text x="576" y="158" text-anchor="middle" font-size="18" fill="currentColor" font-weight="700">=</text>
+  <rect x="620" y="100" width="288" height="76" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="764.0" y="124" text-anchor="middle" font-size="22" fill="currentColor" font-weight="700">30.0%</text>
+  <text x="764.0" y="152" text-anchor="middle" font-size="11.5" fill="currentColor">capacity factor</text>
+  <rect x="620" y="196" width="288" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="764.0" y="217" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">24.0% if the 125 MW DC</text>
+  <text x="764.0" y="234" text-anchor="middle" font-size="11.5" fill="currentColor">rating is used instead</text>
+  <rect x="60" y="262" width="848" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="484.0" y="283" text-anchor="middle" font-size="11.5" fill="currentColor">The two most common errors point in opposite directions: a gross numerator inflates the factor, and a</text>
+  <text x="484.0" y="300" text-anchor="middle" font-size="11.5" fill="currentColor">DC denominator deflates it — so a plausible number can hide both at once.</text>
+  <text x="60" y="348" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Publish the basis with the number: net or gross, AC or DC, and the exact hour count.</text>
+</svg>
+
 ```python
 import numpy as np
 import pandas as pd
@@ -218,6 +245,41 @@ For real SCADA and metered series where gaps, unit ambiguity, and partial period
 ## Downstream validation
 
 Before a capacity factor reaches a finance model or a resource-assessment report, gate it with an assertion suitable for a CI/CD pipeline. This catches the sign errors, unit mixes, and hour-count drift that produce a number outside the physically possible range:
+
+<svg viewBox="0 0 940 380" role="img" aria-label="The hour count in the denominator is not always 8,760. A leap year has 8,784. A daylight-saving transition in a local-time series gives 8,759 hours in spring and 8,761 in autumn, and a naive concatenation of local-time years can double-count the repeated autumn hour. For a 100 megawatt plant producing 262,800 megawatt-hours, the reported capacity factor moves between 29.92 and 30.01 percent depending only on which hour count is used." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Four hour counts, four slightly different capacity factors</title>
+  <desc>A comparison of four hour counts for the same 262,800 megawatt-hours from a 100 megawatt plant: a common year at 8,760 hours gives 30.00 percent, a leap year at 8,784 gives 29.92 percent, a local-time spring-forward year at 8,759 gives 30.00 percent, and a local-time fall-back year at 8,761 gives 29.99 percent. A note explains that the differences are small individually but systematic across a portfolio, and that mixing UTC and local-time series inside one comparison is what makes them unexplainable.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="380"/>
+  <defs><marker id="hr-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">262 800 MWh from 100 MW — which hour count?</text>
+  <rect x="40" y="70" width="868" height="52" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="102" text-anchor="start" font-size="12" fill="currentColor">common year (UTC)</text>
+  <text x="430" y="102" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">8 760 h</text>
+  <text x="600" y="102" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">CF = 30.00%</text>
+  <rect x="700" y="86" width="190" height="20" rx="3" fill="none" stroke="#5BA8C8" stroke-width="1"/>
+  <rect x="700" y="86" width="142.49999999999864" height="20" rx="3" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="130" width="868" height="52" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="162" text-anchor="start" font-size="12" fill="currentColor">leap year (UTC)</text>
+  <text x="430" y="162" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">8 784 h</text>
+  <text x="600" y="162" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">CF = 29.92%</text>
+  <rect x="700" y="146" width="190" height="20" rx="3" fill="none" stroke="#F4A261" stroke-width="1"/>
+  <rect x="700" y="146" width="64.63114754098153" height="20" rx="3" fill="#F4A261" stroke="#F4A261" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="190" width="868" height="52" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="222" text-anchor="start" font-size="12" fill="currentColor">local time, spring forward</text>
+  <text x="430" y="222" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">8 759 h</text>
+  <text x="600" y="222" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">CF = 30.00%</text>
+  <rect x="700" y="206" width="190" height="20" rx="3" fill="none" stroke="#5BA8C8" stroke-width="1"/>
+  <rect x="700" y="206" width="145.75379609544362" height="20" rx="3" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="250" width="868" height="52" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="282" text-anchor="start" font-size="12" fill="currentColor">local time, fall back</text>
+  <text x="430" y="282" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">8 761 h</text>
+  <text x="600" y="282" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">CF = 30.00%</text>
+  <rect x="700" y="266" width="190" height="20" rx="3" fill="none" stroke="#F4A261" stroke-width="1"/>
+  <rect x="700" y="266" width="139.24694669558323" height="20" rx="3" fill="#F4A261" stroke="#F4A261" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="316" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">Individually these are rounding; across a 40-site portfolio compared year on year they are a systematic</text>
+  <text x="474.0" y="354" text-anchor="middle" font-size="11.5" fill="currentColor">drift. Fix the convention — UTC hour counts everywhere — and record it beside the factor.</text>
+</svg>
 
 ```python
 def assert_capacity_factor(cf_table: pd.DataFrame) -> None:

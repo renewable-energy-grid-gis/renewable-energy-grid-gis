@@ -15,6 +15,7 @@ Accurate solar resource assessment hinges on rigorous raster ingestion, spatial 
 The goal of the stage is deterministic: turn heterogeneous Global Horizontal Irradiance (GHI), Direct Normal Irradiance (DNI), and Diffuse Horizontal Irradiance (DHI) inputs into a single analysis-ready grid that preserves radiometric integrity, carries explicit provenance, and aligns pixel-for-pixel with every other layer in the assessment. This page covers the conceptual foundation, the prerequisites, a full runnable processing function, the three failure modes that break naive pipelines, the scalability patterns for continental archives, and the audit trail that makes the output defensible in permitting and project-finance review.
 
 <svg viewBox="0 0 980 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Solar irradiance raster processing pipeline: ingest from NSRDB, PVGIS and NASA POWER, validate CRS and registration, reproject and bilinear-resample to a metric grid, write windowed tiled output, pass the QA/QC gate, and emit an analysis-ready GHI grid; a rejection branch off CRS validation quarantines surfaces with projection or registration drift" style="width:100%;max-width:980px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="980" height="290"/>
   <title>Solar Irradiance Raster Processing Pipeline</title>
   <desc>A left-to-right data flow through six stages. Stage 1 ingest pulls GHI, DNI and DHI surfaces from NSRDB, PVGIS, NASA POWER and CAMS. Stage 2 CRS validate checks the EPSG code and pixel registration; a downward branch labelled drift to reject quarantines any surface whose projection or grid origin disagrees, so it is logged but never merged. Surfaces that pass continue through Stage 3 reproject and bilinear resample to the metric target EPSG:32610, Stage 4 windowed tiled write of float32 with NaN nodata, and Stage 5 QA/QC gate enforcing the clearness-index and alignment bounds, ending at the highlighted Stage 6 analysis-ready GHI grid carrying embedded provenance.</desc>
   <defs>
@@ -94,6 +95,35 @@ where $\mathrm{GHI}_0$ is top-of-atmosphere horizontal irradiance. Any pixel wit
 ## Core implementation
 
 The function below ingests a list of GHI rasters, validates each one, reprojects and resamples it into the target metric CRS with windowed I/O, and returns per-file QA statistics. It uses bilinear resampling to preserve radiometric continuity, writes tiled LZW-compressed `float32` GeoTIFFs with `nodata=NaN`, and orchestrates independent files concurrently with `asyncio` so I/O latency overlaps across the portfolio. Variable names are energy-specific throughout.
+
+<svg viewBox="0 0 940 496" role="img" aria-label="What a GHI raster stack has to agree on before the bands can be treated as one cube. Four properties must match exactly across every band: the CRS, the affine transform, the width and height in pixels, and the nodata value. Two more must be recorded rather than matched: the acquisition epoch of each band and its units. A stack assembled without the first four produces a cube whose pixel [i, j] means a different place in each band." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The six properties a raster stack has to settle before it is a cube</title>
+  <desc>Two grouped lists. The first, marked must match exactly, holds four properties: coordinate reference system, affine transform, raster width and height, and nodata value. Each carries the symptom of a mismatch: a silently shifted overlay, a half-pixel offset that grows with distance from the origin, a shape error at stack time, and fill values entering statistics as data. The second, marked must be recorded, holds two: the acquisition epoch of each band and its units, with the symptom that bands are compared across different years or unit systems without any error being raised.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="496"/>
+  <defs><marker id="st2-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Before np.stack: four properties to match, two to record</text>
+  <text x="48" y="70" text-anchor="start" font-size="12" fill="currentColor" font-weight="700" opacity="0.85">must match exactly</text>
+  <rect x="40" y="82" width="868" height="44" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="110" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">CRS</text>
+  <text x="320" y="110" text-anchor="start" font-size="11.5" fill="currentColor">a silent shift — no exception at any point</text>
+  <rect x="40" y="134" width="868" height="44" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="162" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">affine transform</text>
+  <text x="320" y="162" text-anchor="start" font-size="11.5" fill="currentColor">half-pixel offset growing from the origin</text>
+  <rect x="40" y="186" width="868" height="44" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="214" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">width × height</text>
+  <text x="320" y="214" text-anchor="start" font-size="11.5" fill="currentColor">ValueError at stack time — the loud one</text>
+  <rect x="40" y="238" width="868" height="44" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="266" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">nodata value</text>
+  <text x="320" y="266" text-anchor="start" font-size="11.5" fill="currentColor">fill values enter the statistics as data</text>
+  <text x="48" y="312" text-anchor="start" font-size="12" fill="currentColor" font-weight="700" opacity="0.85">must be recorded</text>
+  <rect x="40" y="324" width="868" height="44" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="352" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">acquisition epoch</text>
+  <text x="320" y="352" text-anchor="start" font-size="11.5" fill="currentColor">a 2013 band averaged with a 2021 band</text>
+  <rect x="40" y="376" width="868" height="44" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="404" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">units</text>
+  <text x="320" y="404" text-anchor="start" font-size="11.5" fill="currentColor">W/m² and kWh/m² summed into one figure</text>
+  <text x="40" y="486" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Only the third failure raises. The other five produce a cube that stacks cleanly and means nothing.</text>
+</svg>
 
 ```python
 import asyncio
@@ -229,6 +259,34 @@ if disjoint_bounds(src_a.bounds, src_b.bounds):
 
 Scaling from a single feasibility site to a regional portfolio is a question of bounding memory and saturating I/O, not buying more RAM:
 
+<svg viewBox="0 0 940 392" role="img" aria-label="What the pixel data type costs on a national hourly GHI stack of 8,760 bands at 4 kilometre resolution. float64 needs 89.2 gigabytes, float32 44.6, and int16 with a scale factor of 0.1 needs 22.3 while still resolving irradiance to 0.1 watts per square metre — far finer than the measurement uncertainty of the source. The data type is the cheapest lever in the whole pipeline and the one most often left at its default." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Pixel type against storage on a national hourly GHI stack</title>
+  <desc>Three bars comparing storage for the same 8,760-band national GHI stack at 4 kilometre resolution: float64 at 89.2 gigabytes, float32 at 44.6 gigabytes, and int16 with a 0.1 scale factor at 22.3 gigabytes. Each bar is annotated with the value resolution it preserves: float64 resolves far below a millionth of a watt per square metre, float32 to about 0.001, and scaled int16 to 0.1 — against a source measurement uncertainty of about 5 watts per square metre, which is marked as the only figure that matters.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="dt-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">8 760 hourly bands, 4 km national grid — pick the pixel type</text>
+  <rect x="200" y="76" width="542.9565217391304" height="52" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="190" y="108" text-anchor="end" font-size="12" fill="currentColor" font-weight="700">float64</text>
+  <text x="212" y="108" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">89.2 GB</text>
+  <text x="756.9565217391304" y="108" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">resolves ≈1e−12 W/m²</text>
+  <rect x="200" y="148" width="271.4782608695652" height="52" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="190" y="180" text-anchor="end" font-size="12" fill="currentColor" font-weight="700">float32</text>
+  <text x="212" y="180" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">44.6 GB</text>
+  <text x="485.4782608695652" y="180" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">resolves ≈0.001 W/m²</text>
+  <rect x="200" y="220" width="135.7391304347826" height="52" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="190" y="252" text-anchor="end" font-size="12" fill="currentColor" font-weight="700">int16 × 0.1 scale</text>
+  <text x="212" y="252" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">22.3 GB</text>
+  <text x="349.7391304347826" y="252" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">resolves 0.1 W/m²</text>
+  <line x1="200" y1="60" x2="200" y2="292" stroke="currentColor" stroke-width="1.1" opacity="0.4"/>
+  <rect x="40" y="292" width="424" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="252.0" y="313" text-anchor="middle" font-size="11.5" fill="currentColor">Source measurement uncertainty is ≈5 W/m²</text>
+  <text x="252.0" y="330" text-anchor="middle" font-size="11.5" fill="currentColor">— every option above resolves far past it</text>
+  <rect x="488" y="292" width="420" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="698.0" y="313" text-anchor="middle" font-size="11.5" fill="currentColor">Scaled int16 also halves the bytes moved on</text>
+  <text x="698.0" y="330" text-anchor="middle" font-size="11.5" fill="currentColor">every read, which is where the time goes</text>
+  <text x="40" y="372" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Set dtype and nodata explicitly at write time; a default float64 doubles every downstream cost.</text>
+</svg>
+
 - **Windowed reads and tiled writes.** Tiled output (`blockxsize`/`blockysize` of 512–2048) lets every downstream consumer read the same windows the warp wrote, keeping peak memory proportional to one tile rather than the whole grid.
 - **Async over files, threads within a file.** Coarse concurrency belongs at the file level via `asyncio` and a semaphore; fine-grained parallelism belongs inside the warp via `num_threads`. Nesting them lets a portfolio run overlap disk latency while each file still uses every core.
 - **GDAL cache tuning.** Set `GDAL_CACHEMAX` (e.g. `512`) to bound block cache; a runaway cache, not the data, is usually what exhausts memory during batch runs.
@@ -259,6 +317,55 @@ def assert_irradiance_integrity(dst_path: Path, target_epsg: int) -> None:
 ```
 
 Pixel alignment is the non-negotiable invariant: when surfaces are later stacked or intersected with [transmission line and substation mapping](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/transmission-line-substation-mapping/) layers or with a [grid capacity buffer analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/), sub-pixel shifts compound into siting errors. Enforce an explicit tolerance — for example ±0.5 m for UTM-projected assets — and log transformation residuals so the output is auditable for regulatory submission and project-finance due diligence. Embedding acquisition timestamps and source version via `update_tags` keeps the lineage attached to the file rather than to a notebook that will not survive the project. With alignment proven and provenance written, these surfaces become safe inputs for cross-validation workflows such as [Stacking NASA POWER and PVGIS rasters in rasterio](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/solar-irradiance-raster-processing/stacking-nasa-power-and-pvgis-rasters-in-rasterio/) and for uncertainty quantification across providers.
+
+
+## Frequently asked questions
+
+### Should the stack be built as a multi-band GeoTIFF or a Zarr store?
+
+A multi-band GeoTIFF for a fixed, modest band count that is always read together — a twelve-band
+monthly climatology, say — and a chunked Zarr or COG stack for anything hourly or growing. The
+deciding question is whether readers want a time series at a point or a map at a time: GeoTIFF
+serves the map cheaply and the time series expensively, and a chunked store with a time-major
+chunking serves the reverse.
+
+### How do I detect a band that was silently misaligned?
+
+Assert, do not inspect. Compare CRS, affine transform, width and height across every band before
+stacking, and compare the value at a known control point across bands afterwards. A half-pixel
+affine drift produces a stack that assembles cleanly and whose pixel [i, j] means a slightly
+different place in each band — which is invisible in any single map and shows up as noise in the
+time series.
+
+### Is float32 precise enough for irradiance?
+
+Comfortably. Float32 resolves about 0.001 W/m² across the range irradiance actually occupies, and
+the measurement uncertainty of the underlying products is several W/m². Scaled int16 with a 0.1
+factor is finer than the measurement too, and halves the bytes again — which is where the time goes
+on a national stack, since almost every operation here is I/O bound rather than compute bound.
+
+### What is the right chunk shape for a national hourly stack?
+
+Chunk on the axis that reads will scan. Site-level analysis reads one pixel across all 8,760 hours,
+so a time-major chunk of the full year for a small spatial tile is right; map-level analysis reads
+one hour across the country, so a space-major chunk is right. Choosing wrong does not produce wrong
+answers, it produces reads that touch every chunk in the store — which on a national stack is the
+difference between seconds and hours.
+
+
+### How should provenance be recorded for a derived raster?
+
+In the file, not beside it. GeoTIFF and Zarr both carry arbitrary metadata, so the source products,
+their versions, the resampling kernel, the nodata convention and the processing timestamp belong in
+the product itself, where a reader who receives only the file can still answer where it came from. A
+sidecar JSON is better than nothing and is routinely separated from the raster it describes.
+
+### Is it worth building overviews for analysis rasters?
+
+For anything that will be looked at, yes — overviews cost a few percent of the file size and turn a
+national map render from a full read into a pyramid read. For a product that is only ever consumed
+by windowed analysis, they earn nothing. The distinction is what the raster is for, and most
+national products end up serving both purposes, which is why overviews are usually worth building.
 
 ## Related
 

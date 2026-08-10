@@ -48,6 +48,7 @@ The corrected slope formula, applied on a metric grid with cell size $c$, is:
 $$\text{slope} = \arctan\!\left(\sqrt{\left(\tfrac{\partial z}{\partial x}\right)^2 + \left(\tfrac{\partial z}{\partial y}\right)^2}\right), \quad \tfrac{\partial z}{\partial x} = \frac{z_{east} - z_{west}}{2c}$$
 
 <svg viewBox="0 0 900 372" role="img" aria-label="Two pipeline lanes contrasted. The broken lane reads the full DEM in EPSG:4326, runs np.gradient assuming 1:1 horizontal and vertical units, and ends in slope cliffs at seams plus MemoryError. The corrected lane validates a projected CRS in metres, reads each window with a one-pixel overlap and boundless NaN pad, computes a Horn three-by-three slope and hillshade, then trims the overlap for a seamless write." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="372"/>
   <title>Broken versus corrected slope and hillshade pipeline</title>
   <desc>A warning-coloured three-stage broken pipeline ending in MemoryError and seam cliffs, above a success-coloured four-stage corrected pipeline that enforces a projected CRS, pads windows with an overlap halo, applies a Horn kernel, and trims the halo for a seamless write.</desc>
   <g text-anchor="middle" font-size="13" fill="currentColor">
@@ -185,6 +186,7 @@ def process_dem_chunked(input_path, slope_out, hillshade_out,
 ```
 
 <svg viewBox="0 0 900 430" role="img" aria-label="Annotated overlap-halo window. On the left, a padded read window of nine by nine cells: the outer one-cell ring is the boundless NaN pad overlap halo, the inner seven by seven block is the trimmed write window. A three-by-three Horn kernel sits at the corner with its centre on the first inner cell, reaching across into the halo ring so the derivative never reads off-window zeros. An arrow trims the halo and writes the inner block aligned to the parent grid, where two adjacent write windows abut at a seam that stays continuous with no ninety-degree cliff." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="430"/>
   <title>Overlap halo lets the Horn kernel cross tile seams without cliffs</title>
   <desc>A padded read window with a warning-coloured one-pixel halo ring around a success-coloured write window; a three-by-three kernel at the corner reads into the halo. Trimming the halo writes the inner block to the parent grid, where neighbouring tiles meet at a seam with no slope cliff.</desc>
   <g font-size="12.5" fill="currentColor">
@@ -255,6 +257,42 @@ When the default `chunk_size` still pressures a constrained runner, step down th
 ## Downstream validation
 
 Before slope and hillshade reach exclusion-zoning or [grid capacity buffer analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/) routing, assert structural integrity. This audit returns a pass/fail dict suitable for a CI/CD gate and catches the exact regressions this fix targets: wrong dtype, a non-projected output CRS, `nodata` bleed, and any residual seam.
+
+<svg viewBox="0 0 940 396" role="img" aria-label="What terrain does to a wind layout, expressed as buildable area. Of a 4,200 hectare lease, 38 percent lies under 5 degrees and takes a standard crane pad; 29 percent is 5 to 10 degrees and needs cut-and-fill; 21 percent is 10 to 15 degrees, where crane-path grading starts to dominate civil cost; and 12 percent exceeds 15 degrees and is excluded outright by the crane specification. Two-thirds of the lease is usable, and only 38 percent is usable cheaply." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Buildable area by slope class, and what each class costs to build on</title>
+  <desc>A stacked bar dividing a 4,200 hectare lease into four slope classes: under 5 degrees at 38 percent with a standard crane pad, 5 to 10 degrees at 29 percent needing cut and fill, 10 to 15 degrees at 21 percent where crane-path grading dominates civil cost, and above 15 degrees at 12 percent excluded by the crane specification. Each class is annotated with its hectare figure and its civil-cost implication, and a note records that the slope class boundaries come from the crane specification rather than from the DEM.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="sl-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">4 200 ha lease, split by slope class</text>
+  <rect x="40" y="70" width="326.84" height="66" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="204.92" y="100" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">38%</text>
+  <text x="204.92" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">1 596 ha</text>
+  <rect x="369.84" y="70" width="248.72" height="66" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="495.7" y="100" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">29%</text>
+  <text x="495.7" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">1 218 ha</text>
+  <rect x="621.56" y="70" width="179.28" height="66" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="712.6999999999999" y="100" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">21%</text>
+  <text x="712.6999999999999" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">882 ha</text>
+  <rect x="803.8399999999999" y="70" width="101.16" height="66" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="855.92" y="100" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">12%</text>
+  <text x="855.92" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">504 ha</text>
+  <rect x="40" y="166" width="16" height="16" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="66" y="179" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">under 5° — standard crane pad</text>
+  <rect x="40" y="194" width="16" height="16" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="66" y="207" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">5–10° — cut and fill required</text>
+  <rect x="40" y="222" width="16" height="16" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="66" y="235" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">10–15° — crane-path grading dominates</text>
+  <rect x="40" y="250" width="16" height="16" rx="3" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="66" y="263" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">above 15° — excluded by crane spec</text>
+  <rect x="500" y="166" width="408" height="73" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="704.0" y="188" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">67% is buildable at some cost</text>
+  <text x="704.0" y="207" text-anchor="middle" font-size="12" fill="currentColor">38% is buildable at standard cost</text>
+  <text x="704.0" y="226" text-anchor="middle" font-size="11.5" fill="currentColor">the gap between the two is the civil budget</text>
+  <rect x="40" y="292" width="868" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="474.0" y="313" text-anchor="middle" font-size="11.5" fill="currentColor">The class boundaries come from the crane specification, not from the DEM — so a layout study should</text>
+  <text x="474.0" y="330" text-anchor="middle" font-size="11.5" fill="currentColor">take them as inputs and record which crane they assume, or the buildable area is not reproducible.</text>
+  <text x="40" y="372" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Slope classes computed on a 10 m DEM; a 30 m DEM moves the boundaries by several percent.</text>
+</svg>
 
 ```python
 import rasterio

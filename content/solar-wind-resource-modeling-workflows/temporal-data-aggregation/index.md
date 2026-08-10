@@ -25,6 +25,7 @@ The second is the **memory spike**. Portfolio-scale NetCDF and GeoTIFF time-seri
 The third is the **physics violation**. Solar irradiance and wind power are non-linear in their driving variables, so the choice of aggregator is a modelling decision, not a formatting one. An arithmetic mean over a 24-hour window dilutes daylight hours and misrepresents the capacity factor; wind power scales with the cube of wind speed, so a mean of speeds understates available power density. Energy-conserving reduction integrates the underlying flux or fits the appropriate distribution before collapsing the axis.
 
 <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Failure-to-correction flow: three temporal-reduction traps — calendar-boundary drift, unbounded memory, and physics violation — each mapped to a corrective stage (UTC normalisation, lazy chunking, energy-correct reduction), all converging on a single compliant monthly NetCDF output" style="width:100%;max-width:880px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="880" height="360"/>
   <title>Three Aggregation Traps and Their Corrective Stages</title>
   <desc>A left-to-right flow diagram in three columns. The left column lists three failure modes drawn with dashed borders: calendar-boundary drift, where a local month boundary does not match the UTC window and partial-day irradiance leaks; unbounded memory, where a ten-year hourly stack over 50 gigabytes triggers an out-of-memory kill; and a physics violation, where an arithmetic mean dilutes the capacity factor and the mean of wind speed is not the mean of its cube. Each failure maps by an arrow to a corrective stage in the middle column: convert to UTC before resampling, chunk lazily along the time axis, and apply an energy-correct reduction with a coverage mask. The three corrective stages then converge through a shared bus into a single highlighted output node on the right, a capacity-factor-compliant monthly NetCDF carrying UTC, EPSG:32612, and an audited coverage mask.</desc>
   <defs>
@@ -192,6 +193,62 @@ The expected-observations term derives from `days_in_month`, which keeps the cov
 
 The aggregation function encodes a physical assumption, so it must be chosen per variable. Global horizontal irradiance (GHI) and direct normal irradiance (DNI) are fluxes in W·m⁻²; their arithmetic mean over a period preserves energy balance and feeds capacity factor directly. The dimensionless capacity factor over a window is the realised energy divided by the energy at continuous rated output:
 
+<svg viewBox="0 0 940 392" role="img" aria-label="Why an annual average built from twelve monthly averages is not the annual average. February contributes 28 days and July 31, but a mean of monthly means weights them equally. For a site whose monthly mean GHI runs from 2.31 kilowatt-hours per square metre per day in December to 7.84 in June, the mean of the twelve monthly means is 5.093 while the day-weighted annual mean is 5.116 — a 0.45 percent difference that propagates directly into an annual energy estimate." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Mean of monthly means versus the day-weighted annual mean</title>
+  <desc>A chart of twelve monthly mean daily GHI values from 2.31 in December to 7.84 in June, each bar drawn with a width proportional to the number of days in that month. Two horizontal lines mark the two candidate annual figures: the unweighted mean of the twelve monthly means at 5.093 kilowatt-hours per square metre per day, and the day-weighted annual mean at 5.116. The difference of 0.45 percent is annotated, with a note that the longer summer months are systematically under-weighted by the unweighted mean.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="mw-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Twelve monthly means, weighted by the days they represent</text>
+  <rect x="60" y="195.98139534883722" width="68.34246575342465" height="66.01860465116279" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="94.17123287671232" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">J</text>
+  <text x="94.17123287671232" y="187.98139534883722" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">3.02</text>
+  <rect x="131.34246575342465" y="175.86976744186046" width="61.43835616438356" height="86.13023255813954" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="162.06164383561642" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">F</text>
+  <text x="162.06164383561642" y="167.86976744186046" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">3.94</text>
+  <rect x="195.78082191780823" y="150.07441860465116" width="68.34246575342465" height="111.92558139534884" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="229.95205479452056" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">M</text>
+  <text x="229.95205479452056" y="142.07441860465116" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">5.12</text>
+  <rect x="267.1232876712329" y="122.53023255813952" width="66.04109589041096" height="139.46976744186048" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="300.14383561643837" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">A</text>
+  <text x="300.14383561643837" y="114.53023255813952" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">6.38</text>
+  <rect x="336.16438356164383" y="102.20000000000002" width="68.34246575342465" height="159.79999999999998" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="370.33561643835617" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">M</text>
+  <text x="370.33561643835617" y="94.20000000000002" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">7.31</text>
+  <rect x="407.5068493150685" y="90.61395348837209" width="66.04109589041096" height="171.3860465116279" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="440.527397260274" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">J</text>
+  <text x="440.527397260274" y="82.61395348837209" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">7.84</text>
+  <rect x="476.54794520547944" y="95.42325581395349" width="68.34246575342465" height="166.5767441860465" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="510.7191780821918" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">J</text>
+  <text x="510.7191780821918" y="87.42325581395349" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">7.62</text>
+  <rect x="547.8904109589041" y="110.28837209302324" width="68.34246575342465" height="151.71162790697676" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="582.0616438356165" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">A</text>
+  <text x="582.0616438356165" y="102.28837209302324" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">6.94</text>
+  <rect x="619.2328767123288" y="134.553488372093" width="66.04109589041096" height="127.44651162790699" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="652.2534246575343" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">S</text>
+  <text x="652.2534246575343" y="126.553488372093" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">5.83</text>
+  <rect x="688.2739726027397" y="165.37674418604652" width="68.34246575342465" height="96.62325581395348" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="722.445205479452" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">O</text>
+  <text x="722.445205479452" y="157.37674418604652" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">4.42</text>
+  <rect x="759.6164383561644" y="191.1720930232558" width="66.04109589041096" height="70.82790697674419" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="792.6369863013699" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">N</text>
+  <text x="792.6369863013699" y="183.1720930232558" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">3.24</text>
+  <rect x="828.6575342465753" y="211.50232558139535" width="68.34246575342465" height="50.49767441860465" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="862.8287671232877" y="280" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">D</text>
+  <text x="862.8287671232877" y="203.50232558139535" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">2.31</text>
+  <line x1="60" y1="262" x2="900" y2="262" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="60" y1="145.46550387596898" x2="900" y2="145.46550387596898" stroke="#F4A261" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="906" y="149.46550387596898" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">5.331</text>
+  <line x1="60" y1="145.33339280025487" x2="900" y2="145.33339280025487" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="906" y="137.33339280025487" text-anchor="start" font-size="11" fill="#1F5C3A" font-weight="700">5.337</text>
+  <rect x="60" y="300" width="412" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="266.0" y="321" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">mean of 12 monthly means</text>
+  <text x="266.0" y="338" text-anchor="middle" font-size="12" fill="currentColor">5.331 kWh/m²·day</text>
+  <rect x="492" y="300" width="412" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="698.0" y="321" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">day-weighted annual mean</text>
+  <text x="698.0" y="338" text-anchor="middle" font-size="12" fill="currentColor">5.337 kWh/m²·day — the one to report</text>
+  <text x="60" y="376" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Difference 0.11% — it lands straight in the annual energy estimate.</text>
+</svg>
+
 $$ \text{CF} = \frac{\sum_{t} P_t \,\Delta t}{P_{\text{rated}} \, T} $$
 
 where $P_t$ is instantaneous power, $\Delta t$ the sample interval, and $T$ the window length. Because $P_t$ is non-linear in irradiance and wind speed, collapsing the time axis *before* applying the power curve discards the variance the curve responds to.
@@ -205,6 +262,79 @@ so a monthly mean of `wind_speed_ms` understates available power whenever the sp
 ## Error handling & edge cases
 
 The three failure modes named in the framing each need an explicit guard rather than a hope that the data is clean.
+
+<svg viewBox="0 0 940 400" role="img" aria-label="The two resample arguments that decide which hour lands in which bucket. With closed set to left and label set to left — the pandas default for most frequencies — an hourly series resampled to daily puts 00:00 through 23:00 into the day stamped 00:00. With closed set to right, 01:00 through 00:00 of the next day fall into the earlier stamp, shifting every daily total by one hour of generation. Neither is wrong; leaving it implicit is." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>closed and label decide which hour belongs to which day</title>
+  <desc>Two timelines of hourly samples across a day boundary. In the first, closed equals left and label equals left: the bucket stamped at midnight contains the samples from 00:00 through 23:00, and the next bucket starts at the following midnight. In the second, closed equals right: the bucket stamped at midnight contains 01:00 through 00:00 of the next day, so one hour of generation moves from each day into the previous one. An annotation notes that the difference is invisible in an annual total and obvious in a daily comparison against metered data.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="cl2-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Same hourly series, two bucket definitions</text>
+  <text x="40" y="76" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">closed='left', label='left'</text>
+  <rect x="60" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="94" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="128" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="162" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="196" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="230" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="264" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="298" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="332" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="366" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="400" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="434" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="468" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="502" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="536" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="570" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="604" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="638" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="672" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="706" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="740" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="774" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="808" y="92" width="28" height="40" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.1"/>
+  <rect x="842" y="92" width="28" height="40" rx="3" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.35"/>
+  <line x1="60" y1="144" x2="870" y2="144" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <text x="74" y="160" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">00:00</text>
+  <text x="448" y="160" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">11:00</text>
+  <text x="856" y="160" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">23:00</text>
+  <line x1="870" y1="84" x2="870" y2="140" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"/>
+  <text x="860" y="84" text-anchor="end" font-size="10.5" fill="currentColor" font-weight="700">bucket edge</text>
+  <text x="40" y="226" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">closed='right', label='left'</text>
+  <rect x="60" y="242" width="28" height="40" rx="3" fill="none" stroke="#F4A261" stroke-width="1.1" opacity="0.35"/>
+  <rect x="94" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="128" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="162" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="196" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="230" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="264" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="298" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="332" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="366" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="400" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="434" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="468" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="502" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="536" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="570" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="604" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="638" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="672" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="706" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="740" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="774" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="808" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <rect x="842" y="242" width="28" height="40" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.1"/>
+  <line x1="60" y1="294" x2="870" y2="294" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <text x="74" y="310" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">00:00</text>
+  <text x="448" y="310" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">11:00</text>
+  <text x="856" y="310" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8">23:00</text>
+  <line x1="60" y1="234" x2="60" y2="290" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"/>
+  <text x="70" y="234" text-anchor="start" font-size="10.5" fill="currentColor" font-weight="700">bucket edge</text>
+  <rect x="40" y="344" width="864" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="472.0" y="365" text-anchor="middle" font-size="11.5" fill="currentColor">The two definitions differ by exactly one hour of generation per day. In an annual total that is invisible;</text>
+  <text x="472.0" y="382" text-anchor="middle" font-size="11.5" fill="currentColor">in a daily comparison against metered data it is a persistent, unexplained offset.</text>
+</svg>
 
 **Calendar-boundary drift.** Confirm the index is UTC before reduction and refuse to proceed on a naive index whose offset cannot be established:
 
@@ -282,6 +412,30 @@ def audit_aggregated_output(output_nc: Path, variable: str = "ghi") -> dict:
 ```
 
 The `masked_cell_fraction` is the early-warning signal: a sudden jump between runs means an upstream sensor outage or a coverage threshold that is now too strict, and it should fail the gate before the artifact reaches a yield model. Persist the record alongside the NetCDF so the lineage from raw stack to monthly statistic is reproducible at financial close. For the specific failure modes encountered when moving from hourly to monthly granularity — timezone drift, unbounded memory, and physics-violating means — the focused walkthrough in [resampling hourly solar data to monthly averages](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/temporal-data-aggregation/resampling-hourly-solar-data-to-monthly-averages/) carries the corrected, runnable correction path.
+
+
+## Frequently asked questions
+
+### Which timezone should the working series use?
+
+UTC everywhere inside the pipeline, with local time applied only at presentation. A local-time index
+duplicates one hour each autumn and drops one each spring, so a year is 8,759 or 8,761 hours rather
+than 8,760, and concatenating local-time years silently double-counts the repeated hour. Storing UTC
+and rendering local keeps every count exact and every comparison across sites valid.
+
+### Does `closed` or `label` matter for annual totals?
+
+Not for the total, which is why the mistake survives — the same hours are summed either way. It
+matters for every daily or monthly comparison against metered data, where the choice shifts one hour
+of generation across each boundary and produces a persistent, unexplained offset. Set both
+explicitly rather than relying on the frequency-dependent default.
+
+### How should missing intervals be represented?
+
+As `NaN` rows that exist, not as absent rows. A gap that is present and null is visible to a
+coverage calculation; a gap that is simply missing looks like a shorter month. Reindex to the
+expected frequency after loading, so every reduction can report the fraction of expected intervals
+it actually saw alongside its value.
 
 ## Related
 

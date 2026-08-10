@@ -5,6 +5,7 @@ Renewable energy siting, grid interconnection planning, and environmental compli
 The sections below follow the path a dataset actually travels in a real project: it is ingested and schema-checked, projected into a deterministic coordinate frame, repaired for topological validity, analysed against jurisdictional and network constraints, processed without exhausting memory, and finally containerized with audit-ready logging. Skipping any stage pushes failure downstream — an unvalidated geometry that survives ingestion will silently corrupt a compliance overlay three steps later, and an implicit reprojection will inflate a setback area enough to invalidate a permit submission.
 
 <svg viewBox="0 0 944 148" role="img" aria-label="Six-stage energy-GIS pipeline: ingestion and schema validation, CRS alignment, topology repair, regulatory overlay and routing, out-of-core processing, and containerized deployment, connected in sequence." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:944px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="944" height="148"/>
   <title>The six-stage energy-GIS pipeline</title>
   <desc>A dataset flows left to right through six sequential stages: (1) ingestion and schema validation, (2) CRS alignment, (3) topology repair, (4) regulatory overlay and routing, (5) out-of-core processing, and (6) containerized deployment.</desc>
   <defs>
@@ -253,6 +254,62 @@ Energy GIS pipelines routinely process terabytes of raster and vector data. Naiv
 
 Leveraging `dask-geopandas` for chunked vector operations and `rasterio.windows` for block-based raster processing ensures memory scales with the window size rather than the file size. Always profile spatial operations before scaling horizontally; many bottlenecks stem from an unindexed spatial join or a redundant CRS transformation rather than raw data volume. The windowed read below caps peak RAM at one tile regardless of whether the source raster is a county or a continent — the same principle that makes [solar irradiance raster processing](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/solar-irradiance-raster-processing/) and [terrain shadow analysis pipelines](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/terrain-shadow-analysis-pipelines/) tractable at national scale.
 
+<svg viewBox="0 0 960 356" role="img" aria-label="Peak resident memory for a whole-array raster read versus a windowed read. Reading a 40,000 by 60,000 float32 GHI raster in one call holds 9.6 gigabytes resident and exhausts a 16 gigabyte worker; reading it as 2048 by 2048 windows holds 16.8 megabytes at a time, so peak memory is set by the window size rather than the file size." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="960" height="356"/>
+  <title>Whole-array read versus windowed read: what actually sits in RAM</title>
+  <desc>Two side-by-side panels over the same 40,000 by 60,000 float32 raster. Left: a single read(1) call pulls every pixel into one array, drawn as a full-height memory bar of 9.6 gigabytes against a 16 gigabyte worker ceiling. Right: a windowed loop pulls one 2048 by 2048 block at a time, drawn as a memory bar of 16.8 megabytes — roughly 570 times smaller and flat regardless of how large the source raster grows.</desc>
+  <g fill="currentColor" font-size="12.5">
+    <rect x="16" y="16" width="452" height="324" rx="12" fill="none" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+    <rect x="492" y="16" width="452" height="324" rx="12" fill="none" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+    <text x="40" y="44" font-weight="700" font-size="13">src.read(1) — whole array</text>
+    <text x="516" y="44" font-weight="700" font-size="13">src.read(1, window=…) — one block</text>
+    <!-- LEFT: source raster, read whole -->
+    <rect x="40" y="60" width="196" height="132" rx="4" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+    <g stroke="#C85B5B" stroke-width="0.7" opacity="0.55">
+      <line x1="72" y1="60" x2="72" y2="192"/><line x1="105" y1="60" x2="105" y2="192"/>
+      <line x1="138" y1="60" x2="138" y2="192"/><line x1="171" y1="60" x2="171" y2="192"/>
+      <line x1="204" y1="60" x2="204" y2="192"/>
+      <line x1="40" y1="93" x2="236" y2="93"/><line x1="40" y1="126" x2="236" y2="126"/>
+      <line x1="40" y1="159" x2="236" y2="159"/>
+    </g>
+    <text x="138" y="212" text-anchor="middle" font-size="11.5" opacity="0.85">40 000 × 60 000 px · float32</text>
+    <!-- LEFT: memory bar -->
+    <line x1="248" y1="126" x2="286" y2="126" stroke="currentColor" stroke-width="1.6" marker-end="url(#mem-arrow)"/>
+    <line x1="288" y1="60" x2="376" y2="60" stroke="#C85B5B" stroke-width="1.4" stroke-dasharray="5 3"/>
+    <text x="332" y="52" text-anchor="middle" font-size="11" fill="#7A4A1A">16 GB worker ceiling</text>
+    <rect x="300" y="76" width="64" height="180" rx="4" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+    <text x="332" y="180" text-anchor="middle" font-weight="700" font-size="15">9.6 GB</text>
+    <text x="332" y="276" text-anchor="middle" font-size="11.5" opacity="0.85">resident at once</text>
+    <text x="40" y="308" font-size="12">Peak RSS scales with the file — the job dies</text>
+    <text x="40" y="326" font-size="12">before the first zonal statistic is computed.</text>
+    <!-- RIGHT: source raster, one window lit -->
+    <rect x="516" y="60" width="196" height="132" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+    <g stroke="#5BA8C8" stroke-width="0.7" opacity="0.55">
+      <line x1="548" y1="60" x2="548" y2="192"/><line x1="581" y1="60" x2="581" y2="192"/>
+      <line x1="614" y1="60" x2="614" y2="192"/><line x1="647" y1="60" x2="647" y2="192"/>
+      <line x1="680" y1="60" x2="680" y2="192"/>
+      <line x1="516" y1="93" x2="712" y2="93"/><line x1="516" y1="126" x2="712" y2="126"/>
+      <line x1="516" y1="159" x2="712" y2="159"/>
+    </g>
+    <rect x="581" y="93" width="33" height="33" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="2"/>
+    <text x="614" y="212" text-anchor="middle" font-size="11.5" opacity="0.85">same raster · one 2048² window lit</text>
+    <!-- RIGHT: memory bar -->
+    <line x1="724" y1="126" x2="762" y2="126" stroke="currentColor" stroke-width="1.6" marker-end="url(#mem-arrow)"/>
+    <rect x="776" y="60" width="64" height="196" rx="4" fill="none" stroke="#3D8B5F" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.6"/>
+    <rect x="776" y="245" width="64" height="11" rx="2" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+    <text x="852" y="253" font-size="11.5" fill="#1F5C3A">16.8 MB</text>
+    <text x="808" y="152" text-anchor="middle" font-size="11.5" opacity="0.85">headroom</text>
+    <text x="808" y="170" text-anchor="middle" font-size="11.5" opacity="0.85">unused</text>
+    <text x="516" y="308" font-size="12">Peak RSS is set by the window, not the file —</text>
+    <text x="516" y="326" font-size="12">a county and a continent cost the same RAM.</text>
+  </g>
+  <defs>
+    <marker id="mem-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>
+
 ```python
 import rasterio
 from rasterio.windows import Window
@@ -323,6 +380,7 @@ Continue into the detailed workflows for each stage: start data sourcing with [o
 The failure modes below show why stage order is load-bearing: an error tolerated early does not surface where it is made, it surfaces — silently — several stages downstream.
 
 <svg viewBox="0 0 944 264" role="img" aria-label="Failure propagation across the pipeline: skipping schema validation in stage 1 lets an unvalidated geometry silently corrupt the stage 4 compliance overlay, and skipping explicit CRS alignment in stage 2 lets an implicit reprojection inflate the setback area and void the permit, both manifesting at stage 4." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:944px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="944" height="264"/>
   <title>How skipped stages corrupt downstream results</title>
   <desc>Six pipeline stages sit in a row. A failure arc runs from stage 1 (ingestion) to the highlighted stage 4 (regulatory overlay), labelled "unvalidated geometry silently corrupts the overlay". A second failure arc runs from stage 2 (CRS) to stage 4, labelled "implicit reprojection inflates the setback, voiding the permit". Both faults are introduced early but only become visible at stage 4.</desc>
   <defs>
@@ -367,6 +425,87 @@ The failure modes below show why stage order is load-bearing: an error tolerated
     </g>
   </g>
 </svg>
+
+
+## Frequently asked questions
+
+### Which stage should I build first if the pipeline has to ship in a week?
+
+Build stage 2 first, then stage 1. Coordinate-reference governance is the only stage whose absence
+corrupts every later result silently, and it is also the cheapest to retrofit badly. A pipeline that
+ingests without schema validation produces obviously wrong records that a reviewer catches; a
+pipeline that analyses in the wrong frame produces plausible numbers nobody catches. Once
+[coordinate reference systems for energy projects](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/coordinate-reference-systems-for-energy-projects/)
+is enforced at the boundary, add the ingestion contract, then topology repair, and treat the
+remaining stages as hardening rather than correctness work.
+
+### Why does the pipeline reproject at ingestion instead of at analysis time?
+
+Because reprojecting late means every consumer has to know the frame each layer arrived in, and one
+of them eventually will not. Transforming once at the boundary gives the rest of the pipeline a
+single invariant to rely on: every layer in the working store is in the declared analysis CRS, in
+metres, with the transformation recorded. The cost is one pass over the data at load time; the
+alternative is a class of defect that only appears when two layers from different vintages are
+finally overlaid, often months later in a permitting submission.
+
+### Do I need dask-geopandas, or is chunking with plain GeoPandas enough?
+
+For almost every dataset in this domain, chunking with plain GeoPandas is enough. National parcel
+and transmission layers are tens of gigabytes, not terabytes, and the memory ceiling is set by the
+chunk size rather than the file size once windowed reads and bounded chunks are in place. Reach for
+`dask-geopandas` when a single chunk of the smallest defensible size still does not fit, or when the
+work is genuinely embarrassingly parallel across machines. Adding a distributed scheduler to a job
+that was slow because of an unindexed spatial join replaces one bottleneck with two.
+
+### How much does an unindexed spatial join actually cost?
+
+The comparison count is the whole story: a pairwise overlay of 42,000 parcels against 6,800
+constraint polygons is 285.6 million geometry comparisons, while an STRtree query first reduces the
+same problem to about 71,400 candidate pairs. In wall-clock terms that is minutes against seconds on
+the same hardware, with identical output. Any spatial operation that takes longer than a coffee
+break should be checked for a missing `sindex` before anything else is optimised.
+
+### What belongs in the audit record, and who reads it?
+
+Source CRS and datum, target CRS, the exact `pyproj` and PROJ database versions, the transformation
+pipeline string, feature counts in and out, and the quarantine count. The reader is rarely the
+author: it is the independent engineer reviewing an interconnection study, the regulator asking
+which frame a reported acreage was measured in, or the same team six months later trying to
+reproduce a number that no longer matches. Submissions are rejected for undocumented spatial
+operations more often than for wrong ones.
+
+### Can this architecture run in a serverless function?
+
+Stages 1 through 4 can, provided the container carries a pinned GDAL, PROJ and GEOS stack and the
+work is scoped to one partition per invocation. The constraint is not compute but the native library
+footprint and cold-start cost of loading the PROJ datum grids. Out-of-core raster processing is a
+poor fit for short-lived functions — the windowed reads want a warm process and a local cache — so
+the usual split is serverless for per-partition vector work and a long-running container for raster
+stages.
+
+### How do I know the pipeline is still correct after a dependency upgrade?
+
+Keep a small fixture: a handful of geometries with known areas, distances and reprojected
+coordinates, asserted to a fixed tolerance in CI. Upgrades to `pyproj` occasionally change which
+transformation pipeline is selected for a datum pair, and the resulting shift is centimetres — too
+small to notice by eye and large enough to matter at survey-staking tolerance. The fixture turns
+that into a failing test instead of a quiet drift.
+
+
+### Should the working store keep geometries in one CRS or many?
+
+One, declared in configuration and asserted on write. A store with mixed frames pushes the
+reprojection decision onto every consumer, and consumers disagree. The exception worth making is a
+second, equal-area copy of any layer whose area is reported, because area and distance cannot both
+be correct in one frame — but that copy is derived, versioned alongside the primary, and never
+edited independently.
+
+### What does a good quarantine rate look like?
+
+Stable, and small enough to triage. The absolute number matters less than its variance: a pipeline
+that quarantines two percent of records every week is describing a known upstream quirk, while one
+that jumps from two percent to nine overnight is describing a change nobody announced. Alert on the
+delta rather than the level, and keep the last known-good batch serving until the new one clears.
 
 ## Related
 

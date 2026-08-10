@@ -21,6 +21,7 @@ The breakdown is not a single bug — it is three compounding causes that each s
 3. **Memory overhead.** `geopandas.read_file()` loads every geometry into RAM at once. Dense, high-vertex transmission corridors exhaust the heap during GEOS topology validation, triggering the `MemoryError` long before any analysis runs.
 
 <svg viewBox="0 0 900 360" role="img" aria-label="Three OpenStreetMap ingestion defects each map to one fix, and all three fixes converge on a single audit gate. Tag fragmentation (mixed strings like 110;380000 and '110 kV') is resolved by parse_voltage_max with regex cleaning and a max split. CRS drift from buffering in EPSG:3857 is resolved by estimate_utm_crs plus a buffer(0) topology repair. Memory overhead from a monolithic read_file is resolved by chunked fiona bounding-box streaming plus gc.collect. All three repaired stages feed an audit report that requires at least 98 percent valid geometry before the build passes." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="360"/>
   <title>Three ingestion defects, three fixes, one audit gate</title>
   <desc>A left column of three failure boxes (tag fragmentation, CRS drift, memory overhead) each connects rightward to a fix box (parse_voltage_max, estimate_utm_crs, chunked fiona bbox), and all three fix boxes converge on a single audit-report gate requiring at least 98 percent valid geometry.</desc>
   <g text-anchor="middle" font-size="11" font-weight="700" letter-spacing="1.2" fill="currentColor" opacity="0.7">
@@ -184,6 +185,41 @@ assert hv_proj.crs.is_projected, "CRS must be projected for metric buffers"
 
 Loading a multi-hundred-megabyte `.osm.pbf` whole is what triggers the `MemoryError`; stream it instead and reclaim memory between slices. The strategies below keep a regional extract inside a bounded RAM envelope and scale it for CI/CD or out-of-core runs:
 
+<svg viewBox="0 0 940 392" role="img" aria-label="Three ways to scope an Overpass query for the same state-level transmission extract, and what each costs. A bounding box returns 74,000 elements in 38 seconds but includes everything in the rectangle, so a clip is still needed. An administrative area query returns 61,000 elements in 96 seconds already clipped to the boundary. A full-country extract returns 2.4 million elements in about 21 minutes and is only worth it when more than a handful of states are needed." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Bounding box, admin area, or country extract</title>
+  <desc>Three panels comparing Overpass query strategies. Bounding box: 74,000 elements, 38 seconds, needs a downstream clip because the rectangle overshoots the boundary. Administrative area: 61,000 elements, 96 seconds, already clipped, but the area lookup itself can time out on large relations. Country extract via a planet mirror: 2.4 million elements, about 21 minutes, worth it only above roughly six states, and the right choice for a scheduled refresh.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="ov-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The same extract, scoped three ways</text>
+  <rect x="40" y="62" width="280" height="84" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="180.0" y="85" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">bounding box</text>
+  <text x="180.0" y="107" text-anchor="middle" font-size="12" fill="currentColor">74 000 elements</text>
+  <text x="180.0" y="129" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">38 s</text>
+  <text x="180.0" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">overshoots — clip downstream</text>
+  <rect x="340" y="62" width="280" height="84" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="480.0" y="85" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">admin area (rel)</text>
+  <text x="480.0" y="107" text-anchor="middle" font-size="12" fill="currentColor">61 000 elements</text>
+  <text x="480.0" y="129" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">96 s</text>
+  <text x="480.0" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">pre-clipped · area lookup can time out</text>
+  <rect x="640" y="62" width="268" height="84" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="774.0" y="85" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">country extract</text>
+  <text x="774.0" y="107" text-anchor="middle" font-size="12" fill="currentColor">2.4M elements</text>
+  <text x="774.0" y="129" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">≈21 min</text>
+  <text x="774.0" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">worth it above ~6 states</text>
+  <text x="40" y="246" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">wall-clock, same query, same server</text>
+  <rect x="240" y="258" width="16.4" height="20.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="272.0" text-anchor="end" font-size="11" fill="currentColor">bbox</text>
+  <text x="264.36923076923074" y="272.0" text-anchor="start" font-size="11.5" fill="currentColor">38 s</text>
+  <rect x="240" y="284.0" width="41.4" height="20.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="298.0" text-anchor="end" font-size="11" fill="currentColor">admin area</text>
+  <text x="289.3538461538462" y="298.0" text-anchor="start" font-size="11.5" fill="currentColor">96 s</text>
+  <rect x="240" y="310.0" width="542.8" height="20.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="324.0" text-anchor="end" font-size="11" fill="currentColor">country</text>
+  <text x="790.7692307692307" y="324.0" text-anchor="start" font-size="11.5" fill="currentColor">1260 s</text>
+  <rect x="40" y="348" width="868" height="25" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="367" text-anchor="middle" font-size="11.5" fill="currentColor">Scope to the admin area for a one-off study; take the country extract when the refresh is scheduled and repeated.</text>
+</svg>
+
 - **Bounding-box streaming.** Use `fiona`'s `filter(bbox=...)` to pull only features inside the study extent, never the whole continent-sized file.
 - **Explicit garbage collection.** Call `gc.collect()` after each chunk so GEOS-validated geometries are released before the next slice loads.
 - **Spatial index before joins.** Build `sindex` once so corridor-to-substation joins prune toward `O(n log n)` instead of a pairwise scan.
@@ -219,6 +255,37 @@ def load_osm_chunked(filepath: str, bbox: tuple, chunk_size: int = 50_000) -> gp
 ## Downstream validation
 
 Before the extracted layer reaches an interconnection study or environmental screen, gate it with an audit that asserts geometry integrity, records how many voltage fallbacks were applied, and captures the CRS authority and extent. The 98% valid-geometry floor is a hard CI threshold — below it the build fails rather than shipping a corrupt asset layer, the same standard applied across [spatial data quality validation](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/spatial-data-quality-validation/).
+
+<svg viewBox="0 0 940 384" role="img" aria-label="Tag completeness across 61,000 extracted high-voltage line ways, which decides what a downstream model can rely on. The power tag is present by construction at 100 percent; voltage is present on 91 percent; operator on 62 percent; circuits on 41 percent; cables on 33 percent; and the reference designation on 28 percent. Any attribute below about 60 percent has to be treated as optional and inferred, never assumed." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>What fraction of extracted line ways carries each tag</title>
+  <desc>A horizontal bar chart of tag completeness over 61,000 extracted line ways: power at 100 percent, voltage at 91, operator at 62, circuits at 41, cables at 33 and ref at 28. A threshold line at 60 percent separates tags a model may rely on from those that must be inferred or left nullable. A note explains that circuits and cables are exactly the tags a capacity model wants most, and exactly the ones least often present.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="384"/>
+  <defs><marker id="tc-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Tag completeness over 61 000 extracted line ways</text>
+  <rect x="240" y="66" width="538.5" height="30.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="85.0" text-anchor="end" font-size="11.5" fill="currentColor">power</text>
+  <text x="786.4615384615385" y="85.0" text-anchor="start" font-size="11.5" fill="currentColor">100%</text>
+  <rect x="240" y="102.0" width="490.0" height="30.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="121.0" text-anchor="end" font-size="11.5" fill="currentColor">voltage</text>
+  <text x="738.0" y="121.0" text-anchor="start" font-size="11.5" fill="currentColor">91%</text>
+  <rect x="240" y="138.0" width="333.8" height="30.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="157.0" text-anchor="end" font-size="11.5" fill="currentColor">operator</text>
+  <text x="581.8461538461538" y="157.0" text-anchor="start" font-size="11.5" fill="currentColor">62%</text>
+  <rect x="240" y="174.0" width="220.8" height="30.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="193.0" text-anchor="end" font-size="11.5" fill="currentColor">circuits</text>
+  <text x="468.7692307692308" y="193.0" text-anchor="start" font-size="11.5" fill="currentColor">41%</text>
+  <rect x="240" y="210.0" width="177.7" height="30.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="229.0" text-anchor="end" font-size="11.5" fill="currentColor">cables</text>
+  <text x="425.6923076923077" y="229.0" text-anchor="start" font-size="11.5" fill="currentColor">33%</text>
+  <rect x="240" y="246.0" width="150.8" height="30.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="230" y="265.0" text-anchor="end" font-size="11.5" fill="currentColor">ref</text>
+  <text x="398.7692307692308" y="265.0" text-anchor="start" font-size="11.5" fill="currentColor">28%</text>
+  <line x1="563.0769230769231" y1="60" x2="563.0769230769231" y2="282" stroke="#F4A261" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="571.0769230769231" y="300" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">60% — below this, infer or leave nullable</text>
+  <rect x="40" y="316" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">circuits and cables are the two a thermal-capacity model wants most, and the two least often mapped —</text>
+  <text x="474.0" y="354" text-anchor="middle" font-size="11.5" fill="currentColor">so the model has to carry an explicit “unknown circuit count” path rather than defaulting to one.</text>
+</svg>
 
 ```python
 def generate_audit_report(transmission_gdf: gpd.GeoDataFrame, output_path: str) -> dict:

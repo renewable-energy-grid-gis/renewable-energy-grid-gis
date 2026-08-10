@@ -87,7 +87,7 @@ a:hover, a:focus-visible { color: var(--c-link-hover); text-decoration-color: cu
   white-space: nowrap; border: 0;
 }
 .skip-link {
-  position: absolute; top: -40px; left: 8px;
+  position: absolute; top: -60px; left: 8px;
   background: var(--c-grid); color: #fff; padding: 8px 12px;
   border-radius: var(--radius-sm); z-index: 1000;
   transition: top var(--transition);
@@ -354,12 +354,17 @@ a:hover, a:focus-visible { color: var(--c-link-hover); text-decoration-color: cu
 .prose .heading-anchor {
   margin-left: .5rem; color: var(--c-border-strong);
   text-decoration: none; font-weight: 400;
-  opacity: 0; transition: opacity var(--transition), color var(--transition);
+  /* visibility, not just opacity: h1 paints its gradient through the text mask
+     of every descendant glyph, so a transparent anchor would still show as a
+     coloured "#". Hiding the box removes it from that mask. */
+  visibility: hidden;
+  opacity: 0; transition: opacity var(--transition), visibility var(--transition), color var(--transition);
 }
 .prose h1:hover .heading-anchor,
 .prose h2:hover .heading-anchor,
 .prose h3:hover .heading-anchor,
-.prose h4:hover .heading-anchor { opacity: 1; }
+.prose h4:hover .heading-anchor { opacity: 1; visibility: visible; }
+.prose .heading-anchor:focus-visible { opacity: 1; visibility: visible; }
 .prose .heading-anchor:hover { color: var(--c-link); }
 
 .prose a {
@@ -455,9 +460,14 @@ a:hover, a:focus-visible { color: var(--c-link-hover); text-decoration-color: cu
   font-size: .92rem;
 }
 .prose thead { background: linear-gradient(180deg, var(--c-surface-2), var(--c-surface-3)); }
-.prose th, .prose td { padding: .65rem .85rem; text-align: left; vertical-align: top; }
+.prose th, .prose td {
+  padding: .65rem .85rem; text-align: left; vertical-align: top;
+  /* Tabular figures keep a column of numbers in one column width. */
+  font-variant-numeric: tabular-nums;
+}
 .prose th { color: var(--c-grid); font-weight: 700; border-bottom: 1px solid var(--c-border-strong); }
-.prose tbody tr + tr td { border-top: 1px solid var(--c-border); }
+.prose tbody tr td { border-bottom: 1px solid var(--c-border); }
+.prose tbody tr:last-child td { border-bottom: none; }
 .prose tbody tr:hover { background: var(--c-surface-2); }
 
 /* Blockquote */
@@ -703,3 +713,228 @@ a:hover, a:focus-visible { color: var(--c-link-hover); text-decoration-color: cu
 /* In-article diagram SVGs: let them fill the prose column, overriding inline max-width caps.
    Scoped to role="img" so UI icons (aria-hidden) are unaffected. */
 .prose svg[role="img"] { width: 100% !important; max-width: 100% !important; height: auto; }
+
+/* ==========================================================================
+   Light & dark theme
+   The whole surface flips from a [data-theme="dark"] root: page, header,
+   footer, cards, code blocks, tables, FAQ accordions and the interiors of the
+   inline SVG diagrams. Diagrams are drawn in currentColor plus the baked
+   palette hexes below, so the remap keys on those exact values — never
+   introduce an off-palette colour in a diagram or it will stay light-on-dark.
+   ========================================================================== */
+
+:root { color-scheme: light; }
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Neutrals — deep slate blue, the night side of the grid palette */
+  --c-bg: #0E1720;
+  --c-surface: #16212C;
+  --c-surface-2: #1C2833;
+  --c-surface-3: #243342;
+  --c-border: #2C3E4E;
+  --c-border-strong: #3E5567;
+
+  /* Text */
+  --c-text: #E7EEF5;
+  --c-text-muted: #B6C5D3;
+  --c-text-faint: #A3B4C3;
+  --c-link: #8CC0EC;
+  --c-link-hover: #BCDBF8;
+
+  /* Brand marks stay saturated; their soft tints become dark grounds */
+  --c-sun: #F2A868;
+  --c-sun-soft: #4A3623;
+  --c-sky: #7FC6E2;
+  --c-sky-soft: #1D3846;
+  --c-leaf: #6CC08F;
+  --c-leaf-soft: #1D3A2B;
+  --c-grid: #A9C7EC;
+  --c-grid-soft: #22344A;
+  --c-accent: #CB93C4;
+
+  /* Code */
+  --c-code-bg: #121C25;
+  --c-inline-bg: transparent;
+  --c-code-border: #2C3E4E;
+
+  /* Shadows read as depth, not smudge, on a dark ground */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .40), 0 1px 3px rgba(0, 0, 0, .30);
+  --shadow: 0 4px 14px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .32);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, .55);
+}
+
+/* Chrome that was painted with literal white in light mode */
+[data-theme="dark"] .site-header { background: rgba(14, 23, 32, .92); }
+[data-theme="dark"] .site-header__brand-2 { color: var(--c-leaf); }
+[data-theme="dark"] .site-footer { background: linear-gradient(180deg, #16212C, #101A24); }
+[data-theme="dark"] .article-meta__toc-toggle,
+[data-theme="dark"] .code-block__copy,
+[data-theme="dark"] .table-wrap,
+[data-theme="dark"] .faq-list details,
+[data-theme="dark"] .related__card,
+[data-theme="dark"] .home-cta,
+[data-theme="dark"] .home-card,
+[data-theme="dark"] .mermaid { background: var(--c-surface); }
+[data-theme="dark"] .article-meta__toc-toggle { color: var(--c-grid); }
+[data-theme="dark"] .code-block__head { background: linear-gradient(180deg, var(--c-surface), var(--c-code-bg)); }
+[data-theme="dark"] .code-block__copy { color: var(--c-text); }
+[data-theme="dark"] .prose ul.contains-task-list li.task-list-item input[type="checkbox"] { background: var(--c-surface); }
+
+/* Anything that pairs a brand fill with #fff text has to flip its ink, because
+   the brand swatches lighten in dark mode. */
+[data-theme="dark"] .skip-link,
+[data-theme="dark"] .article-meta__toc-toggle[aria-expanded="true"],
+[data-theme="dark"] .code-block__copy:hover,
+[data-theme="dark"] .code-block__copy.is-copied { color: #0E1720; }
+[data-theme="dark"] .prose ul.contains-task-list li.task-list-item input[type="checkbox"]:checked::after { border-color: #0E1720; }
+[data-theme="dark"] .home-cta__icon { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), 0 4px 14px rgba(0, 0, 0, .35); }
+[data-theme="dark"] .home-hero__logo { filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .5)); }
+
+/* Prism tokens — relit for a dark ground, same hue families as light mode */
+[data-theme="dark"] .token.comment,
+[data-theme="dark"] .token.prolog,
+[data-theme="dark"] .token.doctype,
+[data-theme="dark"] .token.cdata { color: #93A2B0; }
+[data-theme="dark"] .token.punctuation { color: #AEBCC9; }
+[data-theme="dark"] .token.property,
+[data-theme="dark"] .token.tag,
+[data-theme="dark"] .token.constant,
+[data-theme="dark"] .token.symbol,
+[data-theme="dark"] .token.deleted { color: #DBA2D3; }
+[data-theme="dark"] .token.boolean,
+[data-theme="dark"] .token.number { color: #F4A0B4; }
+[data-theme="dark"] .token.selector,
+[data-theme="dark"] .token.attr-name,
+[data-theme="dark"] .token.string,
+[data-theme="dark"] .token.char,
+[data-theme="dark"] .token.builtin,
+[data-theme="dark"] .token.inserted { color: #8AD3A7; }
+[data-theme="dark"] .token.operator,
+[data-theme="dark"] .token.entity,
+[data-theme="dark"] .token.url { color: #A6C6EA; }
+[data-theme="dark"] .token.atrule,
+[data-theme="dark"] .token.attr-value,
+[data-theme="dark"] .token.keyword { color: #93BEF5; }
+[data-theme="dark"] .token.function,
+[data-theme="dark"] .token.class-name { color: #CFE0F5; }
+[data-theme="dark"] .token.regex,
+[data-theme="dark"] .token.important,
+[data-theme="dark"] .token.variable { color: #EEC684; }
+
+/* ── Inline SVG diagram interiors ─────────────────────────────────────────
+   Diagrams draw structure in currentColor (which follows --c-text and flips
+   for free) and everything else in the baked palette. Panel tints become dark
+   grounds; label inks lighten; strokes and data marks stay saturated. Element
+   selectors separate the two jobs a hex can do: #1F3A60 is both a label ink
+   and a solid badge carrying white text. */
+/* Every authored diagram carries a full-canvas ground rect so its labels sit
+   on a known colour in both themes rather than on whatever is behind them. */
+svg[role="img"] .svg-bg { fill: var(--c-bg); }
+
+/* Panel tints → dark grounds */
+[data-theme="dark"] svg[role="img"] [fill="#DCEEF6"] { fill: #1D3846; }
+[data-theme="dark"] svg[role="img"] [fill="#FFE3BE"] { fill: #4A3623; }
+[data-theme="dark"] svg[role="img"] [fill="#DDF0E2"] { fill: #1D3A2B; }
+[data-theme="dark"] svg[role="img"] [fill="#F6DCDC"] { fill: #46262A; }
+[data-theme="dark"] svg[role="img"] [fill="#DCE6F0"] { fill: #22344A; }
+[data-theme="dark"] svg[role="img"] [fill="#FBE4D0"] { fill: #43301F; }
+[data-theme="dark"] svg[role="img"] [fill="#FFF4E6"] { fill: #40311F; }
+[data-theme="dark"] svg[role="img"] [fill="#ECF7EF"] { fill: #1C3527; }
+[data-theme="dark"] svg[role="img"] [fill="#CFE8D6"] { fill: #27442F; }
+[data-theme="dark"] svg[role="img"] [fill="#F4F7FB"] { fill: #1B2733; }
+[data-theme="dark"] svg[role="img"] rect[fill="#FFFFFF"],
+[data-theme="dark"] svg[role="img"] rect[fill="#ffffff"],
+[data-theme="dark"] svg[role="img"] rect[fill="#fff"] { fill: #16212C; }
+
+/* Label inks → light. Only text-bearing elements, so solid badges keep theirs */
+[data-theme="dark"] svg[role="img"] g[fill="#1F3A60"],
+[data-theme="dark"] svg[role="img"] text[fill="#1F3A60"],
+[data-theme="dark"] svg[role="img"] tspan[fill="#1F3A60"] { fill: #CBDCF2; }
+[data-theme="dark"] svg[role="img"] g[fill="#2C6E8F"],
+[data-theme="dark"] svg[role="img"] text[fill="#2C6E8F"],
+[data-theme="dark"] svg[role="img"] tspan[fill="#2C6E8F"] { fill: #8FC9E4; }
+[data-theme="dark"] svg[role="img"] g[fill="#7A4A1A"],
+[data-theme="dark"] svg[role="img"] text[fill="#7A4A1A"],
+[data-theme="dark"] svg[role="img"] tspan[fill="#7A4A1A"] { fill: #E8B87A; }
+[data-theme="dark"] svg[role="img"] g[fill="#1F5C3A"],
+[data-theme="dark"] svg[role="img"] text[fill="#1F5C3A"],
+[data-theme="dark"] svg[role="img"] tspan[fill="#1F5C3A"] { fill: #7FCFA3; }
+[data-theme="dark"] svg[role="img"] g[fill="#C76A33"],
+[data-theme="dark"] svg[role="img"] text[fill="#C76A33"],
+[data-theme="dark"] svg[role="img"] tspan[fill="#C76A33"] { fill: #EFA26B; }
+[data-theme="dark"] svg[role="img"] g[fill="#2F6B49"],
+[data-theme="dark"] svg[role="img"] text[fill="#2F6B49"],
+[data-theme="dark"] svg[role="img"] tspan[fill="#2F6B49"] { fill: #74C79A; }
+[data-theme="dark"] svg[role="img"] text[fill="#5BA8C8"],
+[data-theme="dark"] svg[role="img"] g[fill="#5BA8C8"] { fill: #8FD0E8; }
+[data-theme="dark"] svg[role="img"] text[fill="#3D8B5F"],
+[data-theme="dark"] svg[role="img"] g[fill="#3D8B5F"] { fill: #7FCB9E; }
+[data-theme="dark"] svg[role="img"] text[fill="#F4A261"],
+[data-theme="dark"] svg[role="img"] g[fill="#F4A261"] { fill: #F6BE8C; }
+[data-theme="dark"] svg[role="img"] text[fill="#C85B5B"],
+[data-theme="dark"] svg[role="img"] g[fill="#C85B5B"] { fill: #F09A9A; }
+[data-theme="dark"] svg[role="img"] text[fill="#9DB2C9"],
+[data-theme="dark"] svg[role="img"] g[fill="#9DB2C9"] { fill: #A9BCCF; }
+
+/* Solid badges keep white numerals, so lift the disc instead of inverting it */
+[data-theme="dark"] svg[role="img"] g[fill="#7a3b16"],
+[data-theme="dark"] svg[role="img"] text[fill="#7a3b16"] { fill: #E8B87A; }
+[data-theme="dark"] svg[role="img"] circle[fill="#1F3A60"],
+[data-theme="dark"] svg[role="img"] rect[fill="#1F3A60"],
+[data-theme="dark"] svg[role="img"] ellipse[fill="#1F3A60"],
+[data-theme="dark"] svg[role="img"] polygon[fill="#1F3A60"],
+[data-theme="dark"] svg[role="img"] path[fill="#1F3A60"] { fill: #3D6DA6; }
+[data-theme="dark"] svg[role="img"] circle[fill="#7a3b16"],
+[data-theme="dark"] svg[role="img"] circle[fill="#7A3B16"],
+[data-theme="dark"] svg[role="img"] rect[fill="#7A3B16"],
+[data-theme="dark"] svg[role="img"] path[fill="#7A3B16"] { fill: #A85E28; }
+[data-theme="dark"] svg[role="img"] circle[fill="#1F5C3A"],
+[data-theme="dark"] svg[role="img"] rect[fill="#1F5C3A"],
+[data-theme="dark"] svg[role="img"] path[fill="#1F5C3A"] { fill: #2F855A; }
+[data-theme="dark"] svg[role="img"] circle[fill="#7A4A1A"],
+[data-theme="dark"] svg[role="img"] rect[fill="#7A4A1A"],
+[data-theme="dark"] svg[role="img"] path[fill="#7A4A1A"] { fill: #96601F; }
+
+/* Structural strokes that read too dark against the night ground */
+[data-theme="dark"] svg[role="img"] [stroke="#1F3A60"] { stroke: #7FA8DA; }
+[data-theme="dark"] svg[role="img"] [stroke="#2C6E8F"] { stroke: #8FC9E4; }
+[data-theme="dark"] svg[role="img"] [stroke="#7A4A1A"] { stroke: #D9A45E; }
+[data-theme="dark"] svg[role="img"] [stroke="#1F5C3A"] { stroke: #6FC79A; }
+
+/* ── Theme toggle ───────────────────────────────────────────────────────── */
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; flex: none;
+  margin-left: .5rem;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  color: var(--c-grid);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.theme-toggle:hover { background: var(--c-surface-2); border-color: var(--c-border-strong); }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .theme-toggle__moon { display: none; }
+[data-theme="dark"] .theme-toggle .theme-toggle__moon { display: block; }
+[data-theme="dark"] .theme-toggle .theme-toggle__sun { display: none; }
+
+@media (max-width: 900px) {
+  .site-nav { order: 4; }
+  .theme-toggle { margin-left: auto; order: 2; }
+  .site-header__toggle { margin-left: .25rem; order: 3; }
+}
+
+/* Some diagrams carry their palette in an internal <style> block keyed on
+   class rather than on a fill attribute; the class names below are the site's
+   canonical panel roles (sky = pipeline stage, leaf = correct/result, amber =
+   failure/cause), so the dark grounds match the attribute remap above. */
+[data-theme="dark"] svg[role="img"] .stage,
+[data-theme="dark"] svg[role="img"] .task,
+[data-theme="dark"] svg[role="img"] .fam { fill: #1D3846; }
+[data-theme="dark"] svg[role="img"] .good,
+[data-theme="dark"] svg[role="img"] .ok { fill: #1D3A2B; }
+[data-theme="dark"] svg[role="img"] .warn,
+[data-theme="dark"] svg[role="img"] .cause { fill: #4A3623; }

@@ -30,6 +30,7 @@ Four compounding causes account for nearly every broken GHI mosaic, and each map
 Beyond these, a whole-mosaic merge that materialises every tile in memory at once is the classic `MemoryError` on continental extents — addressed by the VRT fallback rather than by buying RAM.
 
 <svg viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision flow for mosaicking GHI tiles. A tile set first passes a uniform-CRS gate; a mismatch exits to a reproject-tiles fix. It then passes a nodata-and-dtype gate; a miss exits to a set-nodata and cast-to-float32 fix. A size decision then routes small mosaics to rasterio.merge with an explicit nodata and method, and large mosaics to a windowed VRT build. Both paths converge on a downstream assertion checking no nodata bleed, expected bounds, and band count and dtype, ending at an audited mosaic." style="max-width:100%;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="900" height="560"/>
   <title>GHI mosaic decision flow: CRS gate, nodata and dtype gate, size routing, and downstream assertion</title>
   <desc>A top-to-bottom flow on a left spine with a right fix lane. The input node is the tile set. The first diamond tests uniform CRS; a no branch exits right to a reproject-all-tiles fix that returns to the spine. The second diamond tests whether nodata is declared and dtype is uniform; a no branch exits right to a set-nodata and cast-to-float32 fix. A third diamond tests whether the mosaic fits in RAM; a yes path leads to rasterio.merge with explicit nodata and method, while a no path leads to a windowed VRT build with block writes. Both merge paths feed a downstream assertion node checking no nodata bleed, expected bounds, and band count and dtype, which then writes an audited mosaic.</desc>
   <defs>
@@ -92,6 +93,42 @@ Beyond these, a whole-mosaic merge that materialises every tile in memory at onc
 
 Surface all four causes *before* `merge` runs. The validator opens each tile's header only — never its full array — and raises on the exact defect so a CI/CD run fails fast with a precise message instead of writing a mosaic riddled with seams and bleed:
 
+<svg viewBox="0 0 940 400" role="img" aria-label="Three things that go wrong where two GHI tiles meet. If nodata is left undeclared, the fill value — commonly minus 9999 — is treated as data and the seam appears as a trench in every downstream statistic. If the tiles carry different scale factors, the seam is a step. If the overlap is resolved by taking the last tile written rather than a defined rule, the seam moves when the file order changes. All three are invisible on a rendered map at national zoom." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>A seam is where three separate defects show up at once</title>
+  <desc>A profile across the boundary between two GHI tiles, drawn three times. In the first, an undeclared nodata value of minus 9999 drops the profile into a deep trench at the seam. In the second, tiles with different scale factors produce a step of about 40 watts per square metre. In the third, an undefined overlap rule makes the seam position depend on file ordering, drawn as two alternative profiles. Below each, the fix: declare nodata, normalise scale before merge, and choose an explicit merge method.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="sm-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The seam between two tiles, three ways it breaks</text>
+  <rect x="40" y="60" width="268" height="190" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="62" y1="176" x2="286" y2="176" stroke="currentColor" stroke-width="1" opacity="0.35"/>
+  <line x1="174.0" y1="74" x2="174.0" y2="216" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity="0.4"/>
+  <text x="174.0" y="236" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">tile seam</text>
+  <path d="M62,130 L160.0,132 L168.0,204 L180.0,204 L188.0,132 L286,128" fill="none" stroke="#C85B5B" stroke-width="2.4"/>
+  <text x="174.0" y="222" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">reads as −9999</text>
+  <text x="174" y="274" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">undeclared nodata</text>
+  <text x="174" y="294" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">declare nodata=NaN before merge</text>
+  <rect x="340" y="60" width="268" height="190" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="362" y1="176" x2="586" y2="176" stroke="currentColor" stroke-width="1" opacity="0.35"/>
+  <line x1="474.0" y1="74" x2="474.0" y2="216" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity="0.4"/>
+  <text x="474.0" y="236" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">tile seam</text>
+  <path d="M362,136 L474.0,134 L474.0,104 L586,102" fill="none" stroke="#F4A261" stroke-width="2.4"/>
+  <text x="530.0" y="92" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">step ≈ 40 W/m²</text>
+  <text x="474" y="274" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">mismatched scale factors</text>
+  <text x="474" y="294" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">normalise scale, then merge</text>
+  <rect x="640" y="60" width="268" height="190" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="662" y1="176" x2="886" y2="176" stroke="currentColor" stroke-width="1" opacity="0.35"/>
+  <line x1="774.0" y1="74" x2="774.0" y2="216" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity="0.4"/>
+  <text x="774.0" y="236" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">tile seam</text>
+  <path d="M662,132 L774.0,130 L886,112" fill="none" stroke="#5BA8C8" stroke-width="2.4"/>
+  <path d="M662,126 L774.0,112 L886,116" fill="none" stroke="#F4A261" stroke-width="2.4" stroke-dasharray="5 4"/>
+  <text x="774.0" y="222" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">depends on file order</text>
+  <text x="774" y="274" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">undefined overlap rule</text>
+  <text x="774" y="294" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">set method= explicitly</text>
+  <rect x="40" y="318" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="339" text-anchor="middle" font-size="11.5" fill="currentColor">None of the three is visible on a rendered national map — they surface as a zonal mean that moves when</text>
+  <text x="474.0" y="356" text-anchor="middle" font-size="11.5" fill="currentColor">the tile list is reordered, which is why the seam assertion belongs in the merge function itself.</text>
+</svg>
+
 ```python
 import rasterio
 from rasterio.crs import CRS
@@ -139,6 +176,43 @@ def preflight_tile_set(tile_paths: list[str], target_epsg: int = 32610) -> None:
 ## Fix implementation
 
 The corrected function runs the preflight, then calls `rasterio.merge` with an explicit `nodata` and a deliberately chosen `method` so overlap zones resolve predictably. Parameter choices are justified for GHI use: `nodata=np.nan` with a `float32` output keeps padded edges out of every downstream mean; `method="max"` favours the cloud-free reading in overlaps (clouds depress GHI, so the maximum of two co-located samples is the clearer-sky value); and `resampling=Resampling.bilinear` preserves radiometric continuity if `merge` must nudge a tile onto the common grid.
+
+<svg viewBox="0 0 940 380" role="img" aria-label="What each rasterio merge method does where two tiles overlap. first keeps the earliest tile in the list, last keeps the final one — both make the answer depend on ordering. min and max bias the overlap systematically, which is defensible only when the bias is the point, such as a conservative resource estimate. Taking a mean of the overlap is the honest default for continuous data drawn from the same source and epoch." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Five merge methods on the same overlapping pair</title>
+  <desc>A row of five small panels showing the same two overlapping tile values, 640 and 682 watts per square metre, resolved by each merge method: first gives 640, last gives 682, min gives 640, max gives 682 and mean gives 661. Each is annotated with when it is the right choice — first and last only when the tile order encodes priority such as a newer vintage, min for conservative resource estimates, max for worst-case thermal studies, and mean for continuous data from one source and epoch.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="380"/>
+  <defs><marker id="mm-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Overlap values 640 and 682 W/m² — five defensible answers</text>
+  <rect x="40" y="62" width="156" height="150" rx="8" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.55"/>
+  <text x="118" y="92" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">first</text>
+  <text x="118" y="138" text-anchor="middle" font-size="20" fill="currentColor" font-weight="700">640</text>
+  <text x="118" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">W/m²</text>
+  <text x="118" y="232" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85">only if order encodes priority</text>
+  <rect x="218" y="62" width="156" height="150" rx="8" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.55"/>
+  <text x="296" y="92" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">last</text>
+  <text x="296" y="138" text-anchor="middle" font-size="20" fill="currentColor" font-weight="700">682</text>
+  <text x="296" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">W/m²</text>
+  <text x="296" y="232" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85">only if order encodes vintage</text>
+  <rect x="396" y="62" width="156" height="150" rx="8" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3" opacity="0.55"/>
+  <text x="474" y="92" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">min</text>
+  <text x="474" y="138" text-anchor="middle" font-size="20" fill="currentColor" font-weight="700">640</text>
+  <text x="474" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">W/m²</text>
+  <text x="474" y="232" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85">conservative resource estimate</text>
+  <rect x="574" y="62" width="156" height="150" rx="8" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3" opacity="0.55"/>
+  <text x="652" y="92" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">max</text>
+  <text x="652" y="138" text-anchor="middle" font-size="20" fill="currentColor" font-weight="700">682</text>
+  <text x="652" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">W/m²</text>
+  <text x="652" y="232" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85">worst-case thermal study</text>
+  <rect x="752" y="62" width="156" height="150" rx="8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.3" opacity="0.55"/>
+  <text x="830" y="92" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">mean</text>
+  <text x="830" y="138" text-anchor="middle" font-size="20" fill="currentColor" font-weight="700">661</text>
+  <text x="830" y="162" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">W/m²</text>
+  <text x="830" y="232" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.85">same source and epoch</text>
+  <rect x="40" y="262" width="868" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="474.0" y="283" text-anchor="middle" font-size="11.5" fill="currentColor">first and last are not merge rules — they are accidents of the order the file list arrived in. If the tile</text>
+  <text x="474.0" y="300" text-anchor="middle" font-size="11.5" fill="currentColor">order genuinely encodes vintage, sort on the vintage field explicitly and say so in the audit record.</text>
+  <text x="40" y="348" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Record the method with the output: two mosaics of the same tiles are not comparable without it.</text>
+</svg>
 
 ```python
 import numpy as np

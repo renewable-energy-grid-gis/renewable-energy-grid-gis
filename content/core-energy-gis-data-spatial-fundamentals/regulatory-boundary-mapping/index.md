@@ -15,6 +15,7 @@ Three compounding failure paths corrupt regulatory masks in production, and none
 The diagram below traces how a single mismatched source propagates through an unguarded pipeline into a corrupt mask.
 
 <svg viewBox="0 0 760 240" role="img" aria-label="Three boundary sources in mismatched coordinate reference systems — federal EPSG:4269, state EPSG:2226 state-plane feet, and municipal EPSG:4326 — feed an unguarded hierarchical dissolve that flattens statutory precedence and emits a load-order-dependent compliance mask." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:760px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="760" height="240"/>
   <title>How a mismatched source corrupts an unguarded boundary union</title>
   <desc>Three source layers on the left arrive in different coordinate reference systems: a federal conservation layer in EPSG:4269, state setbacks in EPSG:2226 state-plane feet, and municipal zoning in EPSG:4326. All three flow into a single unguarded hierarchical-dissolve stage that flattens precedence, producing a compliance mask in EPSG:5070 GeoParquet whose buildable area depends on file load order rather than statute.</desc>
   <defs>
@@ -181,6 +182,7 @@ async def build_regulatory_mask(sources: dict[str, dict]) -> gpd.GeoDataFrame:
 The `resolve_by_precedence` routine is the deterministic core: because it differences each tier against the area already claimed by higher-ranked jurisdictions, the output is invariant to the order in which sources are fetched, and every output feature still carries its `jurisdiction_type`, `source_id`, and `source_sha256` for audit.
 
 <svg viewBox="0 0 760 264" role="img" aria-label="Three overlapping jurisdictional exclusion polygons — federal precedence 30, state precedence 20, municipal precedence 10 — are resolved by precedence into a single non-overlapping compliance mask in which each lower tier is differenced against higher-ranked area, and every resolved feature retains its source_id and sha256 provenance." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:760px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="760" height="264"/>
   <title>Resolving overlapping exclusions by statutory precedence</title>
   <desc>On the left, three overlapping polygons represent federal (precedence 30), state (precedence 20), and municipal (precedence 10) exclusions whose areas conflict. The resolve_by_precedence step on the right differences each lower tier against the area already claimed by higher-ranked jurisdictions, yielding three mutually exclusive bands: federal claimed in full, state minus federal, and municipal minus the union of state and federal. Each resolved feature keeps its jurisdiction_type, source_id, and source_sha256 provenance.</desc>
   <defs>
@@ -272,6 +274,37 @@ A non-empty quarantine layer is a signal to the data steward, not a number to ig
 
 Statewide zoning and federal conservation catalogs routinely exceed available RAM when loaded as a single GeoDataFrame, and pairwise overlay against thousands of project footprints is the dominant cost.
 
+<svg viewBox="0 0 940 440" role="img" aria-label="How much of a 100 hectare rectangular parcel survives each additional statutory setback. A 30 metre road setback leaves 88.6 hectares; adding a 60 metre dwelling setback on one edge leaves 77.2; adding a 90 metre wetland buffer leaves 66.9; adding a 150 metre property-line setback for turbines leaves 49.4 — less than half the parcel — and the order the setbacks are applied in does not change the result only because they are unioned before subtraction rather than subtracted one at a time." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Each statutory setback takes another bite out of the buildable envelope</title>
+  <desc>On the left, a plan view of a 1000 by 1000 metre parcel with four setback bands drawn inward from its edges: a 30 metre road setback, a 60 metre dwelling setback, a 90 metre wetland buffer and a 150 metre turbine property-line setback, leaving a shrinking central buildable envelope. On the right, a bar chart of the hectares remaining after each band is applied: 88.6, 77.2, 66.9 and 49.4 hectares out of 100. A note records that the bands are unioned before subtraction so that overlapping jurisdictions are never counted twice.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="440"/>
+  <defs><marker id="sb-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="26" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Buildable area after each setback band, on a 100 ha parcel</text>
+  <rect x="44" y="64" width="280" height="280" rx="0" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.6"/>
+  <rect x="52.4" y="72.4" width="263.2" height="263.2" rx="0" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3" opacity="0.55"/>
+  <rect x="60.8" y="80.8" width="246.4" height="246.4" rx="0" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.55"/>
+  <rect x="69.2" y="89.2" width="229.6" height="229.6" rx="0" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.3" opacity="0.55"/>
+  <rect x="86.0" y="106.0" width="196.0" height="196.0" rx="0" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.3" opacity="0.55"/>
+  <text x="184.0" y="208.0" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">buildable</text>
+  <text x="44" y="56" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">1 000 m × 1 000 m parcel</text>
+  <rect x="600" y="76" width="237.4" height="39.2" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="590" y="99.58" text-anchor="end" font-size="11" fill="currentColor">road 30 m</text>
+  <text x="845.448" y="99.58" text-anchor="start" font-size="11.5" fill="currentColor">88.6 ha</text>
+  <rect x="600" y="122.28" width="206.9" height="39.2" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="590" y="145.86" text-anchor="end" font-size="11" fill="currentColor">+ dwelling 60 m</text>
+  <text x="814.896" y="145.86" text-anchor="start" font-size="11.5" fill="currentColor">77.2 ha</text>
+  <rect x="600" y="168.56" width="179.3" height="39.2" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="590" y="192.14" text-anchor="end" font-size="11" fill="currentColor">+ wetland 90 m</text>
+  <text x="787.292" y="192.14" text-anchor="start" font-size="11.5" fill="currentColor">66.9 ha</text>
+  <rect x="600" y="214.84" width="132.4" height="39.2" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="590" y="238.42000000000002" text-anchor="end" font-size="11" fill="currentColor">+ turbine 150 m</text>
+  <text x="740.392" y="238.42000000000002" text-anchor="start" font-size="11.5" fill="currentColor">49.4 ha</text>
+  <text x="600" y="276" text-anchor="start" font-size="11" fill="currentColor" opacity="0.8">hectares remaining of 100</text>
+  <rect x="44" y="366" width="876" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="482.0" y="387" text-anchor="middle" font-size="11.5" fill="currentColor">Union the bands, then subtract once. Subtracting them one at a time double-counts every overlap and</text>
+  <text x="482.0" y="404" text-anchor="middle" font-size="11.5" fill="currentColor">leaves the answer dependent on the order the jurisdictions happened to be loaded in.</text>
+</svg>
+
 - **Chunked ingestion.** Stream large layers through `align_and_validate` in `CHUNK_ROWS`-sized slices so validation and reprojection never hold the full layer plus its transformed copy in memory simultaneously. For genuinely out-of-core work, `dask-geopandas` partitions the same logic across workers, but explicit row chunking is sufficient for most state-level masks.
 - **Spatial indexing.** Build the R-tree (`boundary_gdf.sindex`) once before any point-in-polygon or overlay query. This drops proximity screening from O(N×M) toward near-linear and is the same index the [proximity and distance calculations](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/proximity-distance-calculations/) workflow relies on.
 - **Columnar I/O.** Persist intermediate and final masks as GeoParquet rather than shapefile. Predicate pushdown lets you read only the `jurisdiction_type` partitions a given screening run needs, and the format preserves CRS metadata that shapefile silently truncates.
@@ -316,6 +349,72 @@ def audit_mask(mask: gpd.GeoDataFrame) -> None:
 ```
 
 The non-overlap invariant — that the summed per-feature area equals the area of the dissolved whole — is the machine-checkable proof that precedence resolution actually produced mutually exclusive tiers. Pair it with immutable, checksum-versioned mask outputs so that any siting decision can be replayed against the exact boundary state that produced it during an environmental review.
+
+
+## Frequently asked questions
+
+### Which boundary wins when two jurisdictions overlap?
+
+The more restrictive one, unless statute says otherwise — and statute often does. A county setback
+and a municipal setback over the same parcel are not alternatives to choose between; both apply, so
+the buildable envelope is the parcel minus the union of both. Where a state pre-emption statute
+overrides a local ordinance the precedence is reversed, which is why the precedence rule belongs in
+configuration with a citation attached rather than in a hard-coded ordering.
+
+### How current do boundary layers need to be?
+
+Current enough that annexations since the last vintage cannot change which jurisdiction a parcel
+sits in. In practice that means checking the vintage against the project's own timeline: a
+TIGER/Line release lags annexations by up to a year, and a parcel annexed into a municipality during
+that window is screened against the wrong ordinance. For a screening study the lag is acceptable if
+recorded; for a permit submission it is not.
+
+### Should setback distances be buffered from the parcel edge or from the feature?
+
+From the feature, always. A 60 metre dwelling setback is a 60 metre buffer around the dwelling, not
+a 60 metre inward offset from the parcel boundary — the two coincide only when the dwelling sits
+exactly on the line. Buffering the parcel is faster and produces a plausible envelope, which is what
+makes it a durable mistake; it under-states buildable area on large parcels and over-states it on
+irregular ones.
+
+### Why union the setback bands before subtracting them?
+
+Because overlapping bands otherwise get subtracted twice, and the result depends on the order the
+jurisdictions happened to load in. Unioning first makes the operation order-independent and removes
+the double-count: a wetland buffer overlapping a dwelling setback removes the shared area once, not
+twice. The difference on a real parcel is typically a few percent of buildable area — enough to move
+a layout decision.
+
+### How should a parcel that is entirely excluded be recorded?
+
+As a zero-area result with the binding constraint named, not as a dropped row. A parcel that
+disappears from the output is indistinguishable from a parcel that was never in the input, and the
+question "why is this parcel not in the report" is one a landowner will eventually ask. Keeping the
+row with `buildable_ha = 0` and `binding_constraint = 'wetland buffer'` answers it without a rerun.
+
+
+### How should ordinances that reference a variable be encoded?
+
+As a rule with its inputs, not as a distance. A setback of "three times the total turbine height"
+is not 450 metres until a turbine model is chosen, and the same parcel changes its buildable area
+when the model does. Encoding the rule keeps a layout study honest across machine options; encoding
+the resolved distance silently freezes one option into the constraint layer.
+
+### Do boundary changes require re-running historical screens?
+
+Only when a decision still depends on them. A screen that supported a submitted application is a
+record of what was true at submission and should not be quietly restated. What does need re-running
+is anything still in flight — and the cheapest way to know which is which is to record the boundary
+vintage with each screening output, so a boundary refresh can list exactly the studies it affects.
+
+
+### Can a constraint layer be shared between projects?
+
+The geometry can; the interpretation cannot. Two projects in the same county may face different
+setbacks because their turbine models, land-use classifications or interconnection points differ, so
+a shared exclusion layer that has already resolved those choices will be wrong for one of them. Share
+the source boundaries and the ordinance rules, and let each project resolve them against its own
+parameters at run time.
 
 ## Related
 

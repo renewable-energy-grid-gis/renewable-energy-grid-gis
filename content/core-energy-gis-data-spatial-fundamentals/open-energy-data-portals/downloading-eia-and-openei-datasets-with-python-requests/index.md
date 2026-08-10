@@ -31,6 +31,7 @@ Four compounding causes account for nearly every broken portal download, and eac
 4. **Content-type and encoding traps.** A throttle or WAF response is `text/html` with a `200`, and gzip-encoded bodies decode to bytes. Trusting `status_code == 200` as "success" and calling `.json()` blindly turns both into a `JSONDecodeError` far from the cause.
 
 <svg viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision flow for a resilient portal download. A request goes out through a retrying session. The response is first checked for a 200 status; non-200 with 429 or 503 routes to backoff and retry, other non-200 raises. A 200 response is then checked for a JSON content type; an HTML or gzip body routes to a decode-and-detect-error branch that raises a portal error. Valid JSON is checked for an error envelope; if an errors array or error key is present it raises the portal message, otherwise the data array is validated against a schema, cached to disk, and returned." style="width:100%;max-width:900px;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="500"/>
   <title>Resilient portal download: status gate, content-type gate, error-envelope gate, then schema-validate and cache</title>
   <desc>A top-to-bottom flow with a right-hand exception lane. The request passes through a retrying session. A status gate checks for HTTP 200; 429 or 503 routes right to a backoff-and-retry node, other non-200 codes raise. A content-type gate checks for application/json; an HTML or gzip body routes right to a decode-and-detect node that raises the underlying portal error. An error-envelope gate checks the parsed JSON for an errors array; if present it raises the portal message. Otherwise the data array is schema-validated, cached to disk idempotently, and returned as a validated table.</desc>
   <defs>
@@ -85,6 +86,67 @@ Four compounding causes account for nearly every broken portal download, and eac
 ## Pre-flight validation
 
 Before a batch spends a quota, confirm the key is live and the endpoint is reachable. EIA v2 exposes a cheap metadata route (`/v2/<route>` with no data rows) that returns the series envelope; a single `HEAD`-like probe surfaces an invalid key or a dead route in one call instead of failing 400 requests deep.
+
+<svg viewBox="0 0 960 400" role="img" aria-label="The five shapes an energy portal response actually arrives in, and which gate catches each one. A 200 with JSON and a response envelope is the only success path. A 200 carrying text or HTML is a throttle or firewall page and is caught by the content-type gate. A 429 is a rate limit and routes to backoff. A 200 with a JSON error envelope is caught by the envelope gate. A gzip-encoded body that was decoded as text is caught by the encoding gate. Only responses that clear all four gates reach the schema validator." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Five response shapes, four gates, one success path</title>
+  <desc>A fan diagram. A single request node on the left branches into five possible responses: 200 with JSON data, 200 with text or HTML, 429 too many requests, 200 with a JSON error envelope, and a gzip body. Each response connects to the gate that detects it — the status gate, the content-type gate, the envelope gate, or the encoding gate — and each gate routes either to backoff and retry, to a raised error, or onward. The single path that clears every gate arrives at the schema validator and the local cache.</desc>
+  <rect class="svg-bg" x="0" y="0" width="960" height="400"/>
+  <defs><marker id="ht-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Every one of these arrives with a 200 unless the status gate says otherwise</text>
+  <rect x="24" y="150" width="168" height="50" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="108.0" y="172" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">GET request</text>
+  <text x="108.0" y="189" text-anchor="middle" font-size="11" fill="currentColor">api_key + params</text>
+  <rect x="232" y="62" width="262" height="44" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="363.0" y="82" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">200 · application/json</text>
+  <text x="363.0" y="98" text-anchor="middle" font-size="11" fill="currentColor">envelope + data</text>
+  <line x1="196" y1="180" x2="228" y2="88" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ht-arr)"/>
+  <rect x="232" y="128" width="262" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="363.0" y="148" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">200 · text/html</text>
+  <text x="363.0" y="164" text-anchor="middle" font-size="11" fill="currentColor">WAF or throttle page</text>
+  <line x1="196" y1="180" x2="228" y2="154" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ht-arr)"/>
+  <rect x="232" y="194" width="262" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="363.0" y="214" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">429 · too many requests</text>
+  <text x="363.0" y="230" text-anchor="middle" font-size="11" fill="currentColor">quota exhausted</text>
+  <line x1="196" y1="180" x2="228" y2="220" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ht-arr)"/>
+  <rect x="232" y="260" width="262" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="363.0" y="280" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">200 · JSON error envelope</text>
+  <text x="363.0" y="296" text-anchor="middle" font-size="11" fill="currentColor">{&quot;error&quot;: &quot;invalid key&quot;}</text>
+  <line x1="196" y1="180" x2="228" y2="286" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ht-arr)"/>
+  <rect x="232" y="326" width="262" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="363.0" y="346" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">200 · gzip body</text>
+  <text x="363.0" y="362" text-anchor="middle" font-size="11" fill="currentColor">decoded as text = mojibake</text>
+  <line x1="196" y1="180" x2="228" y2="352" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ht-arr)"/>
+  <rect x="546" y="62" width="236" height="44" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="664.0" y="82" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">status gate</text>
+  <text x="664.0" y="98" text-anchor="middle" font-size="11" fill="currentColor">raise_for_status()</text>
+  <line x1="498" y1="88" x2="542" y2="88" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <rect x="546" y="128" width="236" height="44" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="664.0" y="148" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">content-type gate</text>
+  <text x="664.0" y="164" text-anchor="middle" font-size="11" fill="currentColor">assert json in ctype</text>
+  <line x1="498" y1="154" x2="542" y2="154" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <rect x="546" y="236" width="236" height="44" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="664.0" y="256" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">envelope gate</text>
+  <text x="664.0" y="272" text-anchor="middle" font-size="11" fill="currentColor">check payload[&quot;error&quot;]</text>
+  <line x1="498" y1="262" x2="542" y2="262" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <rect x="546" y="326" width="236" height="44" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="664.0" y="346" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">encoding gate</text>
+  <text x="664.0" y="362" text-anchor="middle" font-size="11" fill="currentColor">resp.content, not .text</text>
+  <line x1="498" y1="352" x2="542" y2="352" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <line x1="498" y1="220" x2="542" y2="262" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <rect x="806" y="128" width="130" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="871.0" y="148" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">backoff</text>
+  <text x="871.0" y="164" text-anchor="middle" font-size="11" fill="currentColor">and retry</text>
+  <rect x="806" y="236" width="130" height="44" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="871.0" y="256" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">raise</text>
+  <text x="871.0" y="272" text-anchor="middle" font-size="11" fill="currentColor">fail loud</text>
+  <rect x="806" y="44" width="130" height="44" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="871.0" y="64" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">schema</text>
+  <text x="871.0" y="80" text-anchor="middle" font-size="11" fill="currentColor">validate</text>
+  <line x1="786" y1="88" x2="802" y2="88" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <line x1="786" y1="154" x2="802" y2="154" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <line x1="786" y1="262" x2="802" y2="262" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+  <line x1="786" y1="352" x2="802" y2="300" stroke="currentColor" stroke-width="1.4" opacity="0.7" marker-end="url(#ht-arr)"/>
+</svg>
 
 ```python
 import os
@@ -250,6 +312,42 @@ The resulting `sites_gdf` is tagged `EPSG:4326` — the geographic frame the por
 - **Prefer bulk archives for national pulls.** When you need every EIA-860 plant or an OpenEI dataset in full, download the published CSV/ZIP archive once rather than paging the API thousands of times — reserve the API for incremental refreshes.
 - **Set an explicit `timeout` on every call.** A missing timeout lets a hung portal connection block a worker indefinitely; 30s per page is a safe ceiling.
 - **Key the cache on portal version.** Include the dataset's `last_updated` (or EIA release date) in the cache filename so a portal revision invalidates stale parquet instead of serving it silently, feeding the same auditable lineage the broader [geospatial data ingestion pipelines](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/geospatial-data-ingestion-pipelines/) rely on.
+
+<svg viewBox="0 0 940 356" role="img" aria-label="The retry schedule a portal client should follow: exponential backoff with full jitter, capped at 60 seconds. The base delays double from 1 to 2, 4, 8, 16 and 32 seconds, and each actual wait is drawn uniformly between zero and that base, so a fleet of workers that all hit a 429 at the same moment does not retry in lockstep. Six attempts cover just over a minute of throttling; beyond that the job should stop and report rather than keep burning quota." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Exponential backoff with full jitter, and why the jitter matters</title>
+  <desc>A horizontal timeline of six retry attempts. For each attempt a light bar shows the base delay — 1, 2, 4, 8, 16 and 32 seconds — and a darker mark inside it shows the actual wait drawn uniformly from zero to that base. A note contrasts the jittered schedule with a fixed one, where every worker in a fleet retries at the same instant and re-triggers the same rate limit. A cap line marks 60 seconds, past which the client should stop retrying and surface the failure.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="356"/>
+  <defs><marker id="bo-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Exponential backoff, full jitter — the wait is a range, not a number</text>
+  <text x="130" y="82" text-anchor="end" font-size="11.5" fill="currentColor">attempt 1</text>
+  <rect x="150" y="66" width="17.5" height="24" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="150" y="66" width="10.5" height="24" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="177.5" y="83" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">base 1s · waited 0.6s</text>
+  <text x="130" y="120" text-anchor="end" font-size="11.5" fill="currentColor">attempt 2</text>
+  <rect x="150" y="104" width="35.0" height="24" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="150" y="104" width="24.499999999999996" height="24" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="195.0" y="121" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">base 2s · waited 1.4s</text>
+  <text x="130" y="158" text-anchor="end" font-size="11.5" fill="currentColor">attempt 3</text>
+  <rect x="150" y="142" width="70.0" height="24" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="150" y="142" width="33.25" height="24" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="230.0" y="159" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">base 4s · waited 1.9s</text>
+  <text x="130" y="196" text-anchor="end" font-size="11.5" fill="currentColor">attempt 4</text>
+  <rect x="150" y="180" width="140.0" height="24" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="150" y="180" width="91.0" height="24" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="300.0" y="197" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">base 8s · waited 5.2s</text>
+  <text x="130" y="234" text-anchor="end" font-size="11.5" fill="currentColor">attempt 5</text>
+  <rect x="150" y="218" width="280.0" height="24" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="150" y="218" width="171.50000000000003" height="24" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="440.0" y="235" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">base 16s · waited 9.8s</text>
+  <text x="130" y="272" text-anchor="end" font-size="11.5" fill="currentColor">attempt 6</text>
+  <rect x="150" y="256" width="560.0" height="24" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="150" y="256" width="376.25" height="24" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="720.0" y="273" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">base 32s · waited 21.5s</text>
+  <line x1="850.0" y1="60" x2="850.0" y2="296" stroke="#F4A261" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="844" y="312" text-anchor="end" font-size="11" fill="#7A4A1A">60 s cap — stop and report</text>
+  <rect x="20" y="322" width="900" height="28" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="470.0" y="342" text-anchor="middle" font-size="11.5" fill="currentColor">Without jitter every worker that hit the same 429 retries at the same instant and re-triggers it.</text>
+</svg>
 
 ## Downstream validation
 

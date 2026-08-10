@@ -24,6 +24,7 @@ Four compounding causes account for nearly every disconnected transmission graph
 4. **Tolerance too small to catch real gaps.** Set it too tight and legitimate 10 m digitization offsets never close, leaving the corridor detached. The correct tolerance lives in the band *above* the digitization noise floor and *below* the minimum real spacing between distinct nodes.
 
 <svg viewBox="0 0 900 470" role="img" aria-label="Four snapping failure causes mapped to their fixes. Cause one, endpoints near but not coincident, maps to snapping endpoints to the nearest node within a metric tolerance. Cause two, snapping evaluated in degrees, maps to projecting to a metric CRS such as EPSG 32614 before any snap. Cause three, an over-generous tolerance merging distinct substations, maps to bounding the tolerance below the minimum real node spacing and flagging every snap. Cause four, a tolerance too tight to close real gaps, maps to selecting the tolerance from an endpoint-to-node gap histogram. All four fixes converge on a connected, deduplicated network graph." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="470"/>
   <title>Snapping failure causes mapped to fixes converging on a connected graph</title>
   <desc>Left column of four warning-coloured cause boxes, each with an arrow to a matching success-coloured fix box in the middle column; all four fix boxes feed a single highlighted node on the right labelled connected deduplicated network graph. Cause one, endpoints near but not coincident, maps to snap endpoint to nearest node within metric tolerance. Cause two, tolerance evaluated in degrees, maps to project to metric CRS EPSG 32614 first. Cause three, over-generous tolerance merges distinct substations, maps to bound tolerance below minimum node spacing and flag each snap. Cause four, tolerance too tight, maps to pick tolerance from an endpoint-to-node gap histogram.</desc>
   <defs>
@@ -149,6 +150,31 @@ A healthy histogram is bimodal: a tight cluster near zero (endpoints that alread
 
 The corrected function snaps each line endpoint to the nearest substation node only when the gap falls within a metric tolerance, records a `snapped_flag` and the snap distance for the audit trail, and never moves an endpoint onto a node farther away than `tolerance_m`. It uses `shapely.ops.nearest_points` to find the target, moves only the terminal vertex, and applies `set_precision` afterward so snapped coordinates collapse to bit-identical values the graph builder will hash to one vertex. Parameter choices are deliberate: `tolerance_m=15.0` sits above a typical few-metre digitization offset and well below substation spacing, and `grid_size=0.001` (1 mm) rounds coordinates so floating-point residue cannot re-split a node.
 
+<svg viewBox="0 0 940 372" role="img" aria-label="The difference between snapping a line endpoint to a substation node and inserting a vertex where a line passes a substation. A tap connection needs the line split at the point of nearest approach and a new node inserted, so the graph gains a degree-three junction. Snapping only endpoints leaves the passing line unconnected, and a routing query will detour to the nearest terminated end — often tens of kilometres away." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Endpoint snapping and vertex insertion solve different problems</title>
+  <desc>Two panels. In the first, a line terminates near a substation node and endpoint snapping moves the endpoint onto the node, producing a clean degree-one connection. In the second, a line passes 12 metres from a substation without terminating; endpoint snapping does nothing, so the substation stays isolated, while vertex insertion splits the line at the nearest point and creates a degree-three junction. A note records the consequence: a routed query from the substation detours to the nearest terminated end.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="372"/>
+  <defs><marker id="sv-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Two topologies, two different repairs</text>
+  <rect x="30" y="58" width="424" height="250" rx="9" fill="none" stroke="#5BA8C8" stroke-width="1.2" opacity="0.55"/>
+  <text x="242" y="84" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">line terminates near the node</text>
+  <path d="M70,190 L200,168 L300,160" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <circle cx="348" cy="158" r="9" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="2"/>
+  <line x1="304" y1="160" x2="336" y2="158" stroke="#F4A261" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#sv-arr)"/>
+  <text x="320" y="196" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">9 m gap → snap the endpoint</text>
+  <text x="242" y="262" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">endpoint snap gives a clean degree-1 connection</text>
+  <rect x="486" y="58" width="424" height="250" rx="9" fill="none" stroke="#F4A261" stroke-width="1.2" opacity="0.55"/>
+  <text x="698" y="84" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">line passes without terminating</text>
+  <path d="M520,132 L700,150 L880,140" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <circle cx="700" cy="196" r="9" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="2"/>
+  <line x1="700" y1="186" x2="700" y2="158" stroke="#F4A261" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#sv-arr)"/>
+  <text x="760" y="178" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">12 m — no endpoint to snap</text>
+  <text x="698" y="240" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">split the line and insert a vertex →</text>
+  <text x="698" y="262" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">the junction becomes degree 3</text>
+  <rect x="30" y="322" width="880" height="25" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="470.0" y="341" text-anchor="middle" font-size="11" fill="currentColor">Endpoint-only snapping leaves every tap connection isolated, and a routed query from that substation detours to the nearest terminated end.</text>
+</svg>
+
 ```python
 import geopandas as gpd
 from shapely import set_precision
@@ -207,6 +233,44 @@ Snapping only the terminal vertices — never interior ones — is what keeps th
 ## Fallback routing & performance tuning
 
 When the simple within-tolerance snap does not fully connect the network, or when it runs at portfolio scale, layer these strategies on top of the core function:
+
+<svg viewBox="0 0 940 400" role="img" aria-label="How the snapping tolerance decides both connectivity and correctness. At 5 metres the network breaks into 412 disconnected components and nothing is wrongly merged. At 15 metres there are 118 components and still no false merges. At 25 metres there are 37 components and 2 false merges. At 50 metres there are 9 components but 14 false merges, where distinct circuits in a shared corridor have been welded together. The working tolerance is the largest value that still produces zero false merges." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Snapping tolerance: components fall, false merges rise</title>
+  <desc>A chart over four snapping tolerances — 5, 15, 25 and 50 metres. One series shows disconnected components falling from 412 to 118 to 37 to 9. A second shows false merges rising from 0 to 0 to 2 to 14. The crossing region between 15 and 25 metres is marked as the working range, and a note explains that a false merge is far more damaging than a disconnection, because a disconnection is visible in a routing failure while a false merge silently produces a shorter path.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="sn-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Choosing the tolerance: the largest value with no false merges</text>
+  <line x1="100" y1="268" x2="890" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="280" y="70" width="210" height="198" rx="6" fill="#DDF0E2" opacity="0.5"/>
+  <text x="370" y="84" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">working range</text>
+  <rect x="118" y="90.0909090909091" width="54" height="177.9090909090909" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <rect x="184" y="266" width="54" height="2" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="145" y="80.0909090909091" text-anchor="middle" font-size="11.5" fill="#2C6E8F" font-weight="700">412</text>
+  <text x="211" y="256" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">0</text>
+  <text x="180" y="290" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">5 m</text>
+  <rect x="308" y="217.04545454545456" width="54" height="50.95454545454545" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <rect x="374" y="266" width="54" height="2" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="335" y="207.04545454545456" text-anchor="middle" font-size="11.5" fill="#2C6E8F" font-weight="700">118</text>
+  <text x="401" y="256" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">0</text>
+  <text x="370" y="290" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">15 m</text>
+  <rect x="498" y="252.02272727272728" width="54" height="15.977272727272727" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <rect x="564" y="244.25" width="54" height="23.75" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="525" y="242.02272727272728" text-anchor="middle" font-size="11.5" fill="#2C6E8F" font-weight="700">37</text>
+  <text x="591" y="234.25" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">2</text>
+  <text x="560" y="290" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">25 m</text>
+  <rect x="688" y="264.1136363636364" width="54" height="3.8863636363636362" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <rect x="754" y="101.75" width="54" height="166.25" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="715" y="254.11363636363637" text-anchor="middle" font-size="11.5" fill="#2C6E8F" font-weight="700">9</text>
+  <text x="781" y="91.75" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">14</text>
+  <text x="750" y="290" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">50 m</text>
+  <rect x="120" y="306" width="16" height="12" rx="2" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="144" y="317" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">disconnected components</text>
+  <rect x="420" y="306" width="16" height="12" rx="2" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="444" y="317" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">false merges</text>
+  <rect x="120" y="336" width="780" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="510.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor">A disconnection announces itself as a routing failure. A false merge quietly returns a shorter path</text>
+  <text x="510.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">through two circuits that were never connected — so tolerance is chosen against false merges.</text>
+</svg>
 
 - **Select the tolerance from the histogram, not a hunch.** Feed `preflight_snap_inputs` output into the choice of `tolerance_m`: set it just above `gap_p95_m` when a clean valley exists, and treat any run where `gap_max_m` approaches node spacing as a signal to split rather than widen.
 - **Split lines at interior node crossings.** A line that passes *through* a substation without terminating there needs `shapely.ops.split` at the node, not endpoint snapping — this creates the mid-line junction a tap or ring bus requires. Do this before the endpoint snap so the freshly created endpoints participate.

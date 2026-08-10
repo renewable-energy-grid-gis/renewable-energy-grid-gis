@@ -1,6 +1,6 @@
 {% set pageDesc = description or site.description %}
 {% set pageTitleFull = (pageTitle or title) + ' · ' + site.shortTitle if (pageTitle or title) else site.title %}
-{# SEO title: keep HTML-encoded length under 65 chars; compact brand suffix for non-home pages #}
+{# Page title: keep HTML-encoded length under 65 chars; compact brand suffix for non-home pages #}
 {% set _pt = pageTitle or title %}
 {% set _suffix = ' · RE & Grid GIS' %}
 {% set _titleCandidate = _pt + _suffix if _pt else site.title %}

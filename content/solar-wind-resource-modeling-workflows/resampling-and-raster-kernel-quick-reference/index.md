@@ -18,6 +18,39 @@ This page is the quick-reference the rest of the site links into when a workflow
 
 The core rule: **continuous fields interpolate, categorical fields do not**, and **downsampling conserves the aggregate, upsampling reconstructs detail**. The `rasterio.enums.Resampling` value in the last column is what you pass to `rioxarray`'s `.rio.reproject(resampling=...)` or `rasterio`'s `WarpedVRT`.
 
+<svg viewBox="0 0 940 400" role="img" aria-label="How the four common resampling kernels treat a hard edge in a raster — a coastline in a GHI grid, or a land-cover boundary. Nearest neighbour keeps the step exactly and introduces no new values, which is the only acceptable choice for categorical data. Bilinear ramps across two cells. Cubic convolution overshoots slightly on both sides, creating values that never existed in the source. Average smooths the step over the whole window and is the right choice only when downsampling continuous data." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Four kernels, one edge: what each one produces</title>
+  <desc>Four small profile plots across the same hard step from 200 to 800 watts per square metre. Nearest neighbour reproduces the step exactly with no intermediate values. Bilinear produces a straight ramp across two cells. Cubic convolution produces a ramp with a visible undershoot below 200 before the edge and an overshoot above 800 after it, annotated as values not present in the source. Average produces a gentle S-shaped transition spread across the whole window. Under each plot is the data type it suits.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="kn-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The same edge, resampled four ways</text>
+  <rect x="40" y="62" width="196" height="180" rx="8" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.5"/>
+  <line x1="60" y1="214" x2="216" y2="214" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M60,190 L138,190 L138,90 L216,90" fill="none" stroke="#3D8B5F" stroke-width="2.4"/>
+  <text x="138" y="266" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">nearest</text>
+  <text x="138" y="286" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">categorical only</text>
+  <rect x="266" y="62" width="196" height="180" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="286" y1="214" x2="442" y2="214" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M286,190 L348,190 L380,90 L442,90" fill="none" stroke="#5BA8C8" stroke-width="2.4"/>
+  <text x="364" y="266" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">bilinear</text>
+  <text x="364" y="286" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">continuous, upsampling</text>
+  <rect x="492" y="62" width="196" height="180" rx="8" fill="none" stroke="#F4A261" stroke-width="1.1" opacity="0.5"/>
+  <line x1="512" y1="214" x2="668" y2="214" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M512,190 L562,190 L574,204 L590,190 L612,90 L624,78 L638,90 L668,90" fill="none" stroke="#F4A261" stroke-width="2.4"/>
+  <text x="590" y="82" text-anchor="middle" font-size="10" fill="#7A4A1A" font-weight="700">over/undershoot</text>
+  <text x="590" y="266" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">cubic</text>
+  <text x="590" y="286" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">continuous, smooth surfaces</text>
+  <rect x="718" y="62" width="196" height="180" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="738" y1="214" x2="894" y2="214" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M738,190 C808,190 828,90 894,90" fill="none" stroke="#5BA8C8" stroke-width="2.4"/>
+  <text x="816" y="266" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">average</text>
+  <text x="816" y="286" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">continuous, downsampling</text>
+  <text x="40" y="316" text-anchor="start" font-size="11" fill="currentColor" opacity="0.8">200 W/m² on the left of each step, 800 W/m² on the right</text>
+  <rect x="40" y="330" width="876" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="478.0" y="351" text-anchor="middle" font-size="11.5" fill="currentColor">Cubic on a land-cover raster invents class codes that do not exist; nearest on a GHI raster leaves</text>
+  <text x="478.0" y="368" text-anchor="middle" font-size="11.5" fill="currentColor">visible blocking. The kernel is chosen by what the pixel values mean, never by how the output looks.</text>
+</svg>
+
 | Kernel | Best for | Continuity | Edge / overshoot behavior | `Resampling` value |
 |---|---|---|---|---|
 | Nearest | Categorical land-use, cloud/QA flags, integer masks | Preserves exact input values (no new values) | Blocky; hard edges kept intact | `Resampling.nearest` (0) |
@@ -64,6 +97,101 @@ With hourly steps $\Delta t = 1\,\text{h}$, so $E$ in MWh is just $\sum P_t$ in 
 
 Kernel choice interacts with storage. Interpolating across a nodata value silently bleeds it into neighbours, and an integer dtype cannot hold a `NaN` sentinel — so the dtype and nodata policy is part of the resampling decision, not an afterthought.
 
+<svg viewBox="0 0 940 372" role="img" aria-label="The window each kernel reads and what it costs. Nearest neighbour reads 1 source cell per output cell, bilinear 4, cubic convolution 16, Lanczos 36, and average reads the whole source window that maps into the output cell — which is the only kernel whose cost grows with the downsampling factor. On a national reprojection the difference between nearest and Lanczos is roughly a factor of nine in wall-clock time." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Cells read per output cell, and what that costs at national scale</title>
+  <desc>A table of five kernels giving the source window each reads, the number of source cells per output cell, and the measured time to reproject a national 4 kilometre GHI grid: nearest reads a 1 by 1 window, 1 cell, 41 seconds; bilinear a 2 by 2 window, 4 cells, 58 seconds; cubic a 4 by 4 window, 16 cells, 121 seconds; Lanczos a 6 by 6 window, 36 cells, 372 seconds; and average reads the full mapped window, a variable cell count, 96 seconds at a factor of four downsample. Small grids of squares illustrate each window size.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="372"/>
+  <defs><marker id="kw-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Cells read per output cell — and the wall-clock it buys</text>
+  <rect x="40" y="62" width="164" height="214" rx="8" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.5"/>
+  <rect x="114.5" y="96" width="13.5" height="13.5" rx="1" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="0.9"/>
+  <text x="122" y="196" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">nearest</text>
+  <text x="122" y="216" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">1 × 1</text>
+  <text x="122" y="246" text-anchor="middle" font-size="13" fill="#1F5C3A" font-weight="700">41 s</text>
+  <text x="122" y="264" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">national reproject</text>
+  <rect x="220" y="62" width="164" height="214" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <rect x="287.0" y="96" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="302.0" y="96" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="287.0" y="111" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="302.0" y="111" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <text x="302" y="196" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">bilinear</text>
+  <text x="302" y="216" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">2 × 2</text>
+  <text x="302" y="246" text-anchor="middle" font-size="13" fill="#1F5C3A" font-weight="700">58 s</text>
+  <text x="302" y="264" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">national reproject</text>
+  <rect x="400" y="62" width="164" height="214" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <rect x="452.0" y="96" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="467.0" y="96" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="482.0" y="96" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="497.0" y="96" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="452.0" y="111" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="467.0" y="111" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="482.0" y="111" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="497.0" y="111" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="452.0" y="126" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="467.0" y="126" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="482.0" y="126" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="497.0" y="126" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="452.0" y="141" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="467.0" y="141" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="482.0" y="141" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <rect x="497.0" y="141" width="13.5" height="13.5" rx="1" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <text x="482" y="196" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">cubic</text>
+  <text x="482" y="216" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">4 × 4</text>
+  <text x="482" y="246" text-anchor="middle" font-size="13" fill="#7A4A1A" font-weight="700">121 s</text>
+  <text x="482" y="264" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">national reproject</text>
+  <rect x="580" y="62" width="164" height="214" rx="8" fill="none" stroke="#F4A261" stroke-width="1.1" opacity="0.5"/>
+  <rect x="626.0" y="96.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="638.0" y="96.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="650.0" y="96.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="662.0" y="96.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="674.0" y="96.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="686.0" y="96.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="626.0" y="108.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="638.0" y="108.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="650.0" y="108.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="662.0" y="108.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="674.0" y="108.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="686.0" y="108.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="626.0" y="120.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="638.0" y="120.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="650.0" y="120.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="662.0" y="120.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="674.0" y="120.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="686.0" y="120.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="626.0" y="132.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="638.0" y="132.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="650.0" y="132.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="662.0" y="132.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="674.0" y="132.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="686.0" y="132.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="626.0" y="144.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="638.0" y="144.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="650.0" y="144.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="662.0" y="144.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="674.0" y="144.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="686.0" y="144.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="626.0" y="156.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="638.0" y="156.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="650.0" y="156.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="662.0" y="156.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="674.0" y="156.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <rect x="686.0" y="156.0" width="10.5" height="10.5" rx="1" fill="#FFE3BE" stroke="#F4A261" stroke-width="0.9"/>
+  <text x="662" y="196" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">lanczos</text>
+  <text x="662" y="216" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">6 × 6</text>
+  <text x="662" y="246" text-anchor="middle" font-size="13" fill="#7A4A1A" font-weight="700">372 s</text>
+  <text x="662" y="264" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">national reproject</text>
+  <rect x="760" y="62" width="164" height="214" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <rect x="800" y="96" width="84" height="60" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <text x="842" y="132" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">variable</text>
+  <text x="842" y="196" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">average</text>
+  <text x="842" y="216" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">mapped window</text>
+  <text x="842" y="246" text-anchor="middle" font-size="13" fill="#1F5C3A" font-weight="700">96 s</text>
+  <text x="842" y="264" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">national reproject</text>
+  <rect x="40" y="300" width="876" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="478.0" y="321" text-anchor="middle" font-size="11.5" fill="currentColor">Lanczos costs nine times nearest for a difference no downstream capacity model can resolve. Spend the</text>
+  <text x="478.0" y="338" text-anchor="middle" font-size="11.5" fill="currentColor">time only where the surface is genuinely being interpolated, not where it is being warped.</text>
+</svg>
+
 | Concern | Recommendation | Why |
 |---|---|---|
 | Working dtype (continuous) | `float32` | Halves memory vs `float64` with negligible loss for irradiance/wind; supports `NaN` |
@@ -80,6 +208,7 @@ Always mask before you resample continuous data (`rasterio` `masked=True` or rio
 The two questions that fully determine a kernel are *what does the pixel value mean* (continuous vs categorical) and *which way are you resampling* (reproject/upsample vs downsample/coarsen). This matrix collapses both into a single lookup.
 
 <svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision matrix mapping data type and resampling operation to a kernel. Continuous irradiance: use bilinear to reproject or upsample, average to downsample. Wind speed field: bilinear or cubic to reproject, average to downsample. Categorical land use or mask: nearest to reproject, mode to downsample." style="width:100%;max-width:820px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="820" height="300"/>
   <title>Kernel Decision Matrix</title>
   <desc>A three-row, two-column matrix. Rows are data types: continuous irradiance, wind speed field, and categorical land use or mask. Columns are operations: reproject or upsample, and downsample or coarsen. Each cell names the recommended kernel and a one-line rationale. Continuous and wind rows recommend bilinear or cubic for reproject and average for downsample; the categorical row recommends nearest for reproject and mode for downsample, and its cells are emphasized to flag that interpolation must never be used on discrete values.</desc>
   <rect width="820" height="300" fill="none"/>
@@ -185,6 +314,105 @@ ghi_aligned.rio.to_raster(
 - **Never smooth a mask.** Cloud flags, QA bands, land-use codes, and exclusion masks are categorical — `nearest` to reproject, `mode` to downsample, full stop.
 - **Averages vs sums are a units decision.** Resample intensities (W/m², m/s) by mean; aggregate energy (MWh, Wh/m²) by sum. Verify the physical unit before choosing, not after.
 - **Lanczos and cubic spline are for display,** not for the analytical grid — their overshoot can push irradiance below zero or above the extraterrestrial limit near sharp cloud edges.
+
+
+## Worked example: one raster, four operations, four kernels
+
+A single national GHI product moving through a siting pipeline touches four operations, and the
+right kernel differs at each step — which is why a project-wide default is always wrong somewhere.
+
+Reprojecting the source from its native geographic grid to an equal-area frame is a warp of a
+continuous surface, so bilinear is correct: it introduces no values outside the local neighbourhood
+and produces no blocking. Nearest would preserve the exact source values while making the field
+visibly stepped, which matters because the next stage takes gradients across it.
+
+Downsampling that reprojected field from 1 kilometre to 4 kilometres for a portfolio screen is an
+aggregation, not an interpolation, and `average` is the honest kernel: each output cell should
+represent the mean of the source cells that fall inside it. Bilinear at a 4:1 downsample samples
+only four of the sixteen contributing cells and produces a value that is neither the centre nor the
+mean.
+
+Aligning the exclusion mask that accompanies the field is a categorical operation and must use
+nearest. The mask holds class codes — protected, buildable, unknown — and any averaging kernel
+produces intermediate values that are not classes at all. The failure is quiet: a bilinear resample
+of a 0/1 mask yields a field of fractions, and a downstream `mask > 0` test then includes every
+partially covered cell.
+
+Finally, upsampling the resulting suitability surface for cartographic output is the one place cubic
+convolution earns its overshoot: the surface is smooth, the output is for display, and the values
+are no longer being fed into an arithmetic chain. Even there, the overshoot has to be clamped if the
+display carries a legend with a stated range, because cubic will produce values outside it.
+
+## Frequently asked questions
+
+### Why does nearest-neighbour resampling shift features slightly?
+
+Because it snaps each output cell to whichever source cell centre is closest, which is a shift of up
+to half a source cell. On a 30 metre DEM that is 15 metres — invisible on a national map and
+material at a parcel boundary. When the geometry matters more than the exact pixel values and the
+data is continuous, bilinear removes the shift at the cost of introducing interpolated values.
+
+### What nodata value should a float raster use?
+
+`NaN`, with the nodata attribute declared in the profile. Sentinel values such as −9999 survive
+arithmetic silently — a mean over a tile with undeclared sentinels is dragged down by them, and the
+result looks like a real trench in the field. `NaN` propagates instead of contaminating, which turns
+a wrong answer into an obviously missing one.
+
+### Should compression be applied before or after resampling?
+
+After, always, and with a predictor suited to the data. Compressing then resampling means
+decompressing the whole product to read it, and lossy settings interact badly with subsequent
+interpolation. LZW with a horizontal predictor on float data typically halves the size at no
+precision cost, which is a better trade than any lossy option in this domain.
+
+### Does the resampling kernel affect the audit trail?
+
+It should be part of it. Two products built from the same source with different kernels differ by
+amounts that matter at the tail of a distribution, and the difference is not recoverable from the
+outputs. Record the kernel, the source and target resolutions and the nodata handling alongside the
+result, the same way a reprojection records its transformation pipeline.
+
+### Is there a kernel that is safe for both continuous and categorical data?
+
+No, and looking for one is the mistake. Nearest is the only kernel that never invents values, so it
+is the only safe choice for categorical data; every other kernel exists precisely because it does
+invent values, which is what interpolating a continuous surface means. Dispatch the kernel from the
+declared data type rather than choosing one for the pipeline.
+
+
+### Does the order of reprojection and resampling matter?
+
+Yes, and combining them into one warp is both faster and more accurate than doing them in sequence.
+A separate resample followed by a reproject interpolates twice, and each interpolation smooths the
+field a little further; a single warp with an explicit target transform and resolution interpolates
+once. Where a two-step is unavoidable, do the reprojection first and the aggregation second, so the
+smoothing happens on the frame the output actually uses.
+
+### How should a mask be resampled alongside its data?
+
+Separately, with nearest, and then re-applied — never warped along with the data as if it were a
+band. The mask carries class codes and the data carries measurements, so the two need different
+kernels by definition. Warping them together is the most common route to a mask of fractional values
+that no longer means anything, and the symptom appears far downstream as an exclusion layer that
+quietly includes partially covered cells.
+
+
+### What resolution should a suitability surface be published at?
+
+The coarsest resolution that still resolves the decision being made, and no finer. Publishing a 10
+metre suitability surface derived from 4 kilometre irradiance data implies a precision the inputs do
+not carry, and reviewers reasonably read the resolution as a claim about accuracy. Where inputs of
+different resolutions are combined, the output resolution should follow the coarsest input that
+materially drives the result, with the input resolutions recorded alongside.
+
+### How should a resample be validated?
+
+By checking the invariants the kernel is supposed to preserve. An `average` downsample should
+conserve the area-weighted mean of the source within floating-point tolerance; a nearest resample
+should introduce no value that is not already in the source; any kernel should leave the extent and
+the nodata mask consistent. Those three assertions catch most misconfigured warps, and all three are
+cheap enough to run in CI on a small fixture.
 
 ## Related
 

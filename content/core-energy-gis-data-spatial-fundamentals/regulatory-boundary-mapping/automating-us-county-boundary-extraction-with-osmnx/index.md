@@ -13,6 +13,7 @@ OSMnx queries OpenStreetMap's Nominatim geocoder, which returns community-edited
 The diagram below maps each cause to the fix stage that neutralizes it.
 
 <svg viewBox="0 0 860 300" role="img" aria-label="Decision flow for county boundary extraction: a county name plus state enters two gates — does the Nominatim geocode succeed, and is the resulting topology repairable. Passing both gates projects the polygon to EPSG:5070 and yields a validated county GeoDataFrame. Failing either gate routes to a TIGER/Line or state GIS portal fallback, which also yields the validated GeoDataFrame." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:860px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="860" height="300"/>
   <title>How each county-extraction failure mode maps to the stage that neutralises it</title>
   <desc>A query of county name plus state flows into a Nominatim geocode decision. On yes it reaches a topology-repairable decision; on no it routes down to a fallback box for US Census TIGER/Line or a state GIS portal. The topology decision routes yes to a "Project to EPSG:5070" step and no down to the same fallback. The projection step and the fallback both converge on a validated county GeoDataFrame.</desc>
   <defs>
@@ -76,6 +77,43 @@ The diagram below maps each cause to the fix stage that neutralizes it.
 ## Pre-flight Validation: Surface the Root Cause Before Overlay
 
 Run a cheap geocode probe before committing the polygon to your pipeline. This function surfaces ambiguity, emptiness, and invalidity up front, so the fault is logged at ingestion rather than masked as a vanished constraint three stages later.
+
+<svg viewBox="0 0 940 380" role="img" aria-label="Why an OSM administrative relation can return an invalid polygon. The county outline is stored as an ordered set of way segments; if one way is missing from the extract, the ring never closes, and the polygonisation step either drops the feature or returns a self-touching shape whose area is meaningless. Closing the ring against a reference boundary, then running make_valid, is what turns the relation into a usable polygon." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>An unclosed relation ring, and what closing it costs</title>
+  <desc>On the left, a county outline drawn as five way segments with one segment missing, leaving a visible gap; the resulting polygonisation is marked as invalid with an area of zero. In the middle, the repair: the gap is bridged, the ring closes, and make_valid returns a single valid polygon. On the right, three consequences of skipping the repair — a dropped county, a wrongly clipped parcel set, and a setback overlay that silently reports no constraints.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="380"/>
+  <defs><marker id="rr-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">A relation is a set of ways — nothing guarantees they close</text>
+  <line x1="60" y1="210" x2="120" y2="120" stroke="#5BA8C8" stroke-width="2.4"/>
+  <line x1="120" y1="120" x2="230" y2="96" stroke="#5BA8C8" stroke-width="2.4"/>
+  <line x1="230" y1="96" x2="300" y2="170" stroke="#5BA8C8" stroke-width="2.4"/>
+  <line x1="300" y1="170" x2="268" y2="262" stroke="#5BA8C8" stroke-width="2.4"/>
+  <line x1="268" y1="262" x2="150" y2="280" stroke="#C85B5B" stroke-width="2" stroke-dasharray="4 4" opacity="0.85"/>
+  <line x1="150" y1="280" x2="60" y2="210" stroke="#5BA8C8" stroke-width="2.4"/>
+  <circle cx="60" cy="210" r="3.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="120" cy="120" r="3.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="230" cy="96" r="3.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="300" cy="170" r="3.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="268" cy="262" r="3.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="150" cy="280" r="3.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <text x="180" y="62" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">relation as extracted</text>
+  <text x="214" y="300" text-anchor="middle" font-size="11" fill="#7A4A1A">one way missing — ring never closes</text>
+  <text x="180" y="322" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">polygonise() → invalid · area 0</text>
+  <line x1="330" y1="190" x2="372" y2="190" stroke="currentColor" stroke-width="1.4" marker-end="url(#rr-arr)"/>
+  <path d="M420,210 L480,120 L590,96 L660,170 L628,262 L510,280 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="2.2"/>
+  <text x="540" y="62" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">ring closed, then make_valid()</text>
+  <text x="540" y="322" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">one valid polygon · area defensible</text>
+  <line x1="700" y1="190" x2="742" y2="190" stroke="currentColor" stroke-width="1.4" marker-end="url(#rr-arr)"/>
+  <rect x="750" y="96" width="170" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="835.0" y="116" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">County</text>
+  <text x="835.0" y="132" text-anchor="middle" font-size="11" fill="currentColor">silently dropped</text>
+  <rect x="750" y="172" width="170" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="835.0" y="192" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">Parcels</text>
+  <text x="835.0" y="208" text-anchor="middle" font-size="11" fill="currentColor">clipped to nothing</text>
+  <rect x="750" y="248" width="170" height="44" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="835.0" y="268" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">Overlay</text>
+  <text x="835.0" y="284" text-anchor="middle" font-size="11" fill="currentColor">reports no constraint</text>
+</svg>
 
 ```python
 import osmnx as ox
@@ -154,6 +192,48 @@ Cross-check `acres` against the US Census reference for that FIPS code; a double
 
 Batch extraction across 3,000+ counties requires chunked requests, aggressive caching, and strict memory control. Unmanaged loops trigger Nominatim 429 bans and exhaust RAM during geometry serialization.
 
+<svg viewBox="0 0 940 344" role="img" aria-label="Three sources for the same county boundary compared on the four properties that decide whether it can carry a permitting decision: currency, topological cleanliness, attribute completeness and licence. OpenStreetMap is current and richly attributed but topologically unreliable; Census TIGER/Line is topologically clean and public domain but lags annexations by up to a year; a state GIS portal is authoritative and current but is published per state with no national schema." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Choosing a county boundary source: three trade-offs, no free option</title>
+  <desc>A comparison of OpenStreetMap, Census TIGER/Line, and state GIS portals across four rows. Currency: OSM is updated continuously, TIGER annually, state portals on their own schedule. Topology: OSM relations frequently fail to close, TIGER is topologically clean, state portals vary. Attributes: OSM carries rich but inconsistent tags, TIGER carries stable FIPS codes, state portals carry local statutory fields. Licence: OSM is share-alike under ODbL, TIGER is public domain, state portals vary by state.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="344"/>
+  <defs><marker id="cs-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">No single boundary source is both current and topologically safe</text>
+  <text x="382" y="68" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">OpenStreetMap</text>
+  <text x="600" y="68" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Census TIGER/Line</text>
+  <text x="818" y="68" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">State GIS portal</text>
+  <text x="28" y="104" text-anchor="start" font-size="11.5" fill="currentColor" font-weight="700">Currency</text>
+  <rect x="284" y="80" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="382" y="104" text-anchor="middle" font-size="11" fill="currentColor">continuous</text>
+  <rect x="502" y="80" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="600" y="104" text-anchor="middle" font-size="11" fill="currentColor">annual vintage</text>
+  <rect x="720" y="80" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="818" y="104" text-anchor="middle" font-size="11" fill="currentColor">varies by state</text>
+  <text x="28" y="150" text-anchor="start" font-size="11.5" fill="currentColor" font-weight="700">Topology</text>
+  <rect x="284" y="126" width="196" height="38" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="382" y="150" text-anchor="middle" font-size="11" fill="currentColor">rings often open</text>
+  <rect x="502" y="126" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="600" y="150" text-anchor="middle" font-size="11" fill="currentColor">clean, validated</text>
+  <rect x="720" y="126" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="818" y="150" text-anchor="middle" font-size="11" fill="currentColor">varies</text>
+  <text x="28" y="196" text-anchor="start" font-size="11.5" fill="currentColor" font-weight="700">Attributes</text>
+  <rect x="284" y="172" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="382" y="196" text-anchor="middle" font-size="11" fill="currentColor">rich, inconsistent</text>
+  <rect x="502" y="172" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="600" y="196" text-anchor="middle" font-size="11" fill="currentColor">stable FIPS codes</text>
+  <rect x="720" y="172" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="818" y="196" text-anchor="middle" font-size="11" fill="currentColor">statutory fields</text>
+  <text x="28" y="242" text-anchor="start" font-size="11.5" fill="currentColor" font-weight="700">Licence</text>
+  <rect x="284" y="218" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="382" y="242" text-anchor="middle" font-size="11" fill="currentColor">ODbL share-alike</text>
+  <rect x="502" y="218" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="600" y="242" text-anchor="middle" font-size="11" fill="currentColor">public domain</text>
+  <rect x="720" y="218" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="818" y="242" text-anchor="middle" font-size="11" fill="currentColor">varies by state</text>
+  <rect x="28" y="274" width="892" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="295" text-anchor="middle" font-size="11.5" fill="currentColor">The workable pattern is OSM for currency, TIGER for the topology check, and the state portal as the tie-break</text>
+  <text x="474.0" y="312" text-anchor="middle" font-size="11.5" fill="currentColor">whenever a permitting decision depends on which side of the line a parcel falls.</text>
+</svg>
+
 ```python
 import osmnx as ox
 import geopandas as gpd
@@ -223,6 +303,31 @@ def audit_county_batch(gdf: gpd.GeoDataFrame, expected_epsg: int = 5070) -> None
 ```
 
 Pair the assertions with provenance metadata on every output row — `source="osm_nominatim"`, `extraction_utc`, and `topology_repaired=True/False` — and log the deviation reason, source URL, and a validation checksum whenever a county is served from a fallback dataset. That lineage is what makes the resulting mask defensible in a permitting audit, and it lets the parent [Regulatory Boundary Mapping](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/regulatory-boundary-mapping/) pipeline consume county geometry without ambiguity.
+
+
+## Frequently asked questions
+
+### Why does OSMnx return a MultiPolygon for a single county?
+
+Usually because the administrative relation legitimately has more than one part — an exclave, an
+island, or a detached parcel of jurisdiction — and occasionally because the relation's ways did not
+close and the polygonisation produced fragments. The two cases need opposite treatment: keep the
+genuine multipart geometry, and repair the fragmented one. Distinguish them by area ratio; a genuine
+exclave is a meaningful fraction of the county, while a fragment from a broken ring is usually a
+sliver.
+
+### Is it safe to cache OSM boundary extracts?
+
+Yes, and it is necessary at any scale — but cache the extract with its query and its fetch date, and
+treat the cache as a snapshot rather than a source of truth. OSM changes continuously, so two runs
+weeks apart legitimately disagree. A permitting decision should name the snapshot it used.
+
+### What tolerance should the topology repair use?
+
+Small enough that it cannot move a boundary across a parcel, large enough to close the digitising
+gaps that break rings — a metre or two in a projected metric frame is the usual working range.
+Express it in metres, never in degrees, and assert the repaired geometry's area against the original
+so a "repair" that swallowed a neighbouring polygon fails rather than ships.
 
 ## Related
 

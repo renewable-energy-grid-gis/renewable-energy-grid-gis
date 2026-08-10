@@ -15,6 +15,7 @@ Grid Infrastructure & Network Proximity Analysis is the operational backbone of 
 The architecture below is a deterministic, six-stage Python pipeline that moves from raw ingestion through to monitored deployment. Each stage is independently testable, idempotent, and emits structured logs so that any distance, buffer, or conflict flag can be traced back to the exact input geometry and transformation parameters that produced it. The stages are: schema-validated ingestion, explicit CRS alignment, topology enforcement, network proximity analysis, out-of-core scaling, and production deployment with monitoring.
 
 <svg viewBox="0 0 1060 168" role="img" aria-label="Six-stage grid proximity pipeline: ingestion and schema validation, CRS alignment and projection, topology enforcement and repair, network proximity analysis, out-of-core scaling, and deployment with monitoring, connected left to right." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1060" height="168"/>
   <title>End-to-end grid proximity pipeline</title>
   <desc>A deterministic left-to-right flow of six independently testable stages: Stage 1 schema-validated ingestion, Stage 2 CRS alignment and projection strategy, Stage 3 topology enforcement and geometry repair, Stage 4 network proximity analysis, Stage 5 memory and out-of-core scaling, and Stage 6 deployment with monitoring. Each stage feeds the next.</desc>
   <g fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5">
@@ -118,6 +119,7 @@ $$ d = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2} $$
 is only valid once both points share a metric CRS; running it on degrees is the canonical silent bug. Build CRS handling as a small registry pattern so the target projection is declared once, reused everywhere, and recorded in the audit log.
 
 <svg viewBox="0 0 1000 252" role="img" aria-label="Projection decision matrix. Corridor and substation proximity maps to a UTM conformal zone preserving local distance and angle, EPSG 32610 or 32618. Regional footprint and area tally maps to Albers equal-area preserving polygon area, EPSG 5070. Continental multi-zone analysis maps to geodesic computation on the ellipsoid preserving true ellipsoidal distance, with no single planar CRS." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1000" height="252"/>
   <title>Choosing a projection for the analysis task</title>
   <desc>A matrix mapping each spatial analysis task to the correct projection family, the geometric property it preserves, and an example EPSG code: corridor and substation proximity uses a conformal UTM zone (EPSG:32610 / EPSG:32618); regional footprint and area tallies use Albers equal-area (EPSG:5070); continental multi-zone work uses geodesic computation on the ellipsoid (no single planar CRS).</desc>
   <g font-size="11" font-weight="700" letter-spacing="0.8" fill="currentColor" opacity="0.7">
@@ -225,6 +227,54 @@ Topology repair feeds directly into network correctness: a transmission line wit
 ## Stage 4: Network Proximity Analysis
 
 This is the analytical core. With harmonized, valid, metric geometries in hand, the pipeline computes how each candidate generation site relates to the existing grid: nearest energized line, distance to the closest interconnection-capable substation, and whether a site falls inside a clearance or exclusion buffer. The naive approach — a nested loop computing every site-to-line distance — is $O(n \times m)$ and is the reason desktop workflows die at scale: a hundred thousand sites against a hundred thousand line segments is ten billion comparisons. The production approach replaces brute force with spatial indexing, dropping the practical complexity toward $O(n \log m)$.
+
+<svg viewBox="0 0 940 452" role="img" aria-label="Why proximity is the first screen a siting workflow runs. At an indicative 1.2 million dollars per kilometre of generator tie line, a 100 megawatt project 2 kilometres from its point of interconnection carries 2.4 million dollars of tie cost, or 24 dollars per kilowatt; at 10 kilometres it is 12 million and 120 dollars per kilowatt; at 25 kilometres it is 30 million and 300 dollars per kilowatt, which is where most projects stop being financeable. The relationship is linear, which is exactly why a fast, correct distance calculation eliminates candidates before any expensive study is commissioned." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Generator tie cost against distance to the point of interconnection</title>
+  <desc>A line chart with distance to the point of interconnection from 0 to 30 kilometres on the horizontal axis and generator tie cost in millions of dollars on the vertical. The line is straight at 1.2 million dollars per kilometre. Three points are marked: 2 kilometres at 2.4 million dollars or 24 dollars per kilowatt for a 100 megawatt project, 10 kilometres at 12 million or 120 dollars per kilowatt, and 25 kilometres at 30 million or 300 dollars per kilowatt. A shaded band above 200 dollars per kilowatt marks the range where the interconnection cost usually ends the project.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="452"/>
+  <defs><marker id="gt-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Distance to the point of interconnection, priced</text>
+  <line x1="110" y1="286" x2="860" y2="286" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="110" y1="64" x2="110" y2="286" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="110" y="64" width="750" height="108.31578947368422" rx="0" fill="#FFE3BE" opacity="0.45"/>
+  <text x="848" y="160.31578947368422" text-anchor="end" font-size="11" fill="#7A4A1A" font-weight="700">above $200/kW — usually fatal to the pro forma</text>
+  <line x1="106" y1="286.0" x2="860" y2="286.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="290.0" text-anchor="end" font-size="11" fill="currentColor" opacity="0.85">$0M</text>
+  <line x1="106" y1="229.1578947368421" x2="860" y2="229.1578947368421" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="233.1578947368421" text-anchor="end" font-size="11" fill="currentColor" opacity="0.85">$10M</text>
+  <line x1="106" y1="172.31578947368422" x2="860" y2="172.31578947368422" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="176.31578947368422" text-anchor="end" font-size="11" fill="currentColor" opacity="0.85">$20M</text>
+  <line x1="106" y1="115.4736842105263" x2="860" y2="115.4736842105263" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="119.4736842105263" text-anchor="end" font-size="11" fill="currentColor" opacity="0.85">$30M</text>
+  <line x1="110.0" y1="286" x2="110.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="110.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">0 km</text>
+  <line x1="235.0" y1="286" x2="235.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="235.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">5 km</text>
+  <line x1="360.0" y1="286" x2="360.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="360.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">10 km</text>
+  <line x1="485.0" y1="286" x2="485.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="485.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">15 km</text>
+  <line x1="610.0" y1="286" x2="610.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="610.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">20 km</text>
+  <line x1="735.0" y1="286" x2="735.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="735.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">25 km</text>
+  <line x1="860.0" y1="286" x2="860.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="860.0" y="306" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">30 km</text>
+  <path d="M110.0,286.0 L860.0,81.36842105263159" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <circle cx="160.0" cy="272.3578947368421" r="5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <text x="172.0" y="262.3578947368421" text-anchor="start" font-size="11.5" fill="#2C6E8F" font-weight="700">$2.4M · $24/kW</text>
+  <circle cx="360.0" cy="217.78947368421052" r="5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <text x="372.0" y="207.78947368421052" text-anchor="start" font-size="11.5" fill="#2C6E8F" font-weight="700">$12.0M · $120/kW</text>
+  <circle cx="735.0" cy="115.4736842105263" r="5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <text x="747.0" y="105.4736842105263" text-anchor="start" font-size="11.5" fill="#2C6E8F" font-weight="700">$30.0M · $300/kW</text>
+  <text x="110" y="330" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">distance from the site to the point of interconnection</text>
+  <rect x="110" y="356" width="366" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="293.0" y="377" text-anchor="middle" font-size="11.5" fill="currentColor">100 MW project · $1.2M per km of gen-tie</text>
+  <text x="293.0" y="394" text-anchor="middle" font-size="11.5" fill="currentColor">linear in distance, before any upgrade cost</text>
+  <rect x="494" y="356" width="366" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="677.0" y="377" text-anchor="middle" font-size="11.5" fill="currentColor">Which is why proximity is screened first —</text>
+  <text x="677.0" y="394" text-anchor="middle" font-size="11.5" fill="currentColor">it removes candidates for the price of a join</text>
+</svg>
 
 Two indexing strategies cover most needs. A `scipy.spatial.cKDTree` over representative points (substation locations, line midpoints) answers fast k-nearest-neighbour queries for point-to-point screening. For point-to-line or polygon overlay work, GeoPandas' built-in R-tree `sindex` plus a vectorized `sjoin_nearest` returns true geometry-to-geometry distances rather than centroid approximations. The full methodology — index construction, tolerance handling, and geodesic fallbacks — is developed in [proximity distance calculations](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/proximity-distance-calculations/).
 
@@ -348,6 +398,70 @@ In CI/CD, gate deployment on these emitted metrics: a sudden jump in median dist
 ## Conclusion
 
 Grid Infrastructure & Network Proximity Analysis is no longer a manual, desktop-bound exercise. A deterministic six-stage Python architecture — schema-validated [ingestion](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/transmission-line-substation-mapping/), explicit [CRS alignment](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/coordinate-reference-systems-for-energy-projects/), [topology enforcement](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/spatial-data-quality-validation/), indexed [proximity scoring](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/proximity-distance-calculations/) against [capacity headroom](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/) and [validated attributes](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/network-attribute-validation/), out-of-core scaling, and monitored deployment — turns interconnection screening into a repeatable, auditable workflow. As grid modernization accelerates, the teams that standardize these geospatial automation practices will compress study timelines while improving spatial accuracy, and will be able to prove every number they ship.
+
+
+## Frequently asked questions
+
+### Should proximity screening use straight-line or routed distance?
+
+Both, in that order. Straight-line distance is cheap, never over-states the route, and eliminates
+the majority of candidates for the price of a spatial join. Routed distance is what the capital cost
+actually follows, and across sited interconnections the ratio between the two — the circuity factor
+— has a median near 1.28 and a tail beyond 1.9. Screen on the straight line, then route only the
+shortlist. Routing every candidate is the single most common reason a screening pipeline that worked
+on one county fails to finish on a portfolio.
+
+### Why does the dissolved capacity zone take the minimum headroom rather than the sum?
+
+Because overlapping buffers usually mean the assets share an upstream constraint. Three substations
+with 120, 80 and 45 MW of headroom whose buffers overlap do not offer 245 MW to a developer siting
+inside the union; they offer what the most constrained path can carry. Taking the minimum is
+deliberately conservative and, unlike a sum, it can never manufacture capacity that a load-flow
+study will later refuse to confirm. Keep the contributing asset identifiers on the dissolved
+polygon so a reviewer can see which asset set the limit.
+
+### Which spatial index should I use for nearest-substation queries?
+
+A `cKDTree` when the reference set is points and the coordinates are projected, an STRtree when
+either side is a line or polygon, and an H3 cell hash only when the answer is allowed to be
+approximate to the cell size — a portfolio rollup, not a setback. The build cost is paid once and
+the query cost is paid per site, so the choice matters most when the reference set is stable and the
+query set is large, which is exactly the interconnection-screening case. See the
+[spatial index and proximity quick reference](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/spatial-index-and-proximity-quick-reference/)
+for the cost table.
+
+### How do I reconcile substations across datasets with no shared identifier?
+
+Match on attributes first, break ties by distance, and enforce a one-to-one assignment. A normalised
+name plus a nominal voltage class resolves the large majority; a distance tie-break under a few
+hundred metres resolves most of the rest; and whatever is left belongs in a review queue rather than
+in a fuzzy match nobody will audit. The one-to-one constraint is what stops three queue applications
+from each matching the same substation and tripling its headroom in a downstream sum.
+
+### What voltage floor separates transmission from distribution?
+
+Convention puts it at 69 kV in North America, but the honest answer is that the floor belongs in
+configuration, not in the code, because it varies by jurisdiction and by what the study is for. What
+matters more is that the filter is explicit: `power in (line, cable) AND voltage >= floor`. Filtering
+on the OpenStreetMap `power` tag alone pulls the whole distribution network into a transmission
+dataset, and the resulting circuit-kilometre totals are wrong by an order of magnitude rather than a
+few percent.
+
+### Why does deduplication change the network length so much?
+
+Because the same corridor is often mapped twice from different sources, and the duplicates
+concentrate on exactly the corridors that get the most attention. A state extract that reports
+18,420 circuit-kilometres before deduplication can fall to 16,180 afterwards. The inflation is not
+spread evenly, so a national percentage does not tell you whether a specific study area is affected
+— the deduplication has to run on the study extract, not on a national average.
+
+### Can I trust OpenStreetMap for an interconnection study?
+
+For screening, yes, with the tag-completeness caveats: voltage is present on most high-voltage ways,
+but circuit counts and cable counts are present on well under half, and those are precisely what a
+thermal-capacity model wants. For a study that carries a commitment, OSM is the discovery layer and
+the utility or regulator dataset is the authority. The workable pattern is to use OSM to find the
+assets, then reconcile against the authoritative source and record which fields came from which.
 
 ## Related
 

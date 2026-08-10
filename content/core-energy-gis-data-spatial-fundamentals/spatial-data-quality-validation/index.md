@@ -41,7 +41,8 @@ $$ \mathrm{QI} = 100 - \left( w_{\text{geom}} P_{\text{geom}} + w_{\text{attr}} 
 
 with default weights $w_{\text{geom}} = 0.35$, $w_{\text{attr}} = 0.30$, $w_{\text{extent}} = 0.15$, and $w_{\text{topo}} = 0.20$ summing to one. Datasets falling below a configurable threshold (e.g. $\mathrm{QI} < 85$) trigger automated remediation or halt pipeline execution to prevent compliance violations. Geometry is weighted highest because a single invalid polygon corrupts every overlay it touches; extent is weighted lowest because out-of-bounds features are usually trivially clipped rather than fatal.
 
-<svg viewBox="0 0 960 360" role="img" aria-label="The four weighted validation dimensions — geometric validity at weight 0.35, attribute completeness at 0.30, extent alignment at 0.15, and topological consistency at 0.20 — each feed a per-dimension penalty into a composite Quality Index computed as 100 minus the sum of weight times penalty. The index then hits a hard gate: if QI is at least 85 the layer passes to downstream siting and routing models, otherwise it is quarantined into the remediation queue with explicit error codes." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:960px;font-family:inherit">
+<svg viewBox="4 -10 952 307" role="img" aria-label="The four weighted validation dimensions — geometric validity at weight 0.35, attribute completeness at 0.30, extent alignment at 0.15, and topological consistency at 0.20 — each feed a per-dimension penalty into a composite Quality Index computed as 100 minus the sum of weight times penalty. The index then hits a hard gate: if QI is at least 85 the layer passes to downstream siting and routing models, otherwise it is quarantined into the remediation queue with explicit error codes." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:952px;font-family:inherit">
+  <rect class="svg-bg" x="4" y="-10" width="952" height="307"/>
   <title>Four weighted dimensions collapse into one Quality Index that gates the layer</title>
   <desc>Geometric validity (0.35), attribute completeness (0.30), extent alignment (0.15), and topological consistency (0.20) each contribute a penalty to a composite Quality Index, QI = 100 minus the sum of weight times penalty. A decision gate routes layers with QI at least 85 to downstream siting and routing, and quarantines the rest into a remediation queue with explicit error codes.</desc>
   <defs>
@@ -90,8 +91,8 @@ with default weights $w_{\text{geom}} = 0.35$, $w_{\text{attr}} = 0.30$, $w_{\te
       <text x="820" y="277">codes attached</text>
     </g>
     <!-- Edge labels -->
-    <text x="648" y="138" fill="#3D8B5F" font-weight="700">yes</text>
-    <text x="648" y="214" fill="#C76A33" font-weight="700">no</text>
+    <text x="648" y="138" fill="#1F5C3A" font-weight="700">yes</text>
+    <text x="648" y="214" fill="#7A4A1A" font-weight="700">no</text>
   </g>
   <!-- Connectors: dimensions to QI -->
   <g stroke="currentColor" stroke-width="1.6" fill="none" color="#5BA8C8">
@@ -201,6 +202,33 @@ def repair_invalid(chunk: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 National-scale parcel and transmission layers will not fit in memory, so the gate streams the source in fixed-row blocks and validates each independently. `pyogrio.read_info` supplies the feature count up front so chunk offsets can be planned without opening the full dataset, and `asyncio` overlaps the blocking I/O of reading the next chunk with the CPU-bound geometry validation of the current one.
 
+<svg viewBox="0 0 940 372" role="img" aria-label="What a spatial index does to the cost of a topology check. Comparing 42,000 parcels against 6,800 constraint polygons pairwise is 285.6 million candidate comparisons. Querying an STRtree for bounding-box candidates first leaves 71,400 pairs to test exactly — a quarter of a percent of the naive count — and the exact predicate then runs only on those." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Bounding-box candidates first, exact predicates second</title>
+  <desc>Two bars drawn to scale on a logarithmic footing. The first represents 285.6 million pairwise comparisons between 42,000 parcels and 6,800 constraint polygons. The second represents the 71,400 candidate pairs that survive an STRtree bounding-box query, which is 0.025 percent of the first. Beside them, a two-step flow: build the index once, query per feature for candidates, then run the exact intersects predicate only on candidates. A note records the measured wall-clock difference: 19 minutes versus 7 seconds.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="372"/>
+  <defs><marker id="ix-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">42 000 parcels × 6 800 constraints — the index decides how many pairs are ever tested</text>
+  <text x="40" y="74" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">naive pairwise</text>
+  <rect x="40" y="84" width="864" height="44" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="472" y="112" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">285 600 000 candidate pairs</text>
+  <text x="40" y="168" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">STRtree bounding-box query, then exact predicate</text>
+  <rect x="40" y="178" width="864" height="44" rx="7" fill="none" stroke="#3D8B5F" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.5"/>
+  <rect x="40" y="178" width="22" height="44" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="78" y="206" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">71 400 pairs — 0.025% of the naive count</text>
+  <rect x="40" y="250" width="268" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="174.0" y="271" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">build sindex once</text>
+  <text x="174.0" y="288" text-anchor="middle" font-size="11" fill="currentColor">O(n log n)</text>
+  <line x1="312" y1="282" x2="334" y2="282" stroke="currentColor" stroke-width="1.4" marker-end="url(#ix-arr)"/>
+  <rect x="338" y="250" width="268" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="472.0" y="271" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">query candidates</text>
+  <text x="472.0" y="288" text-anchor="middle" font-size="11" fill="currentColor">bbox only</text>
+  <line x1="610" y1="282" x2="632" y2="282" stroke="currentColor" stroke-width="1.4" marker-end="url(#ix-arr)"/>
+  <rect x="636" y="250" width="268" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="770.0" y="271" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">exact predicate</text>
+  <text x="770.0" y="288" text-anchor="middle" font-size="11" fill="currentColor">on candidates</text>
+  <text x="40" y="352" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Measured on the same layer pair: 19 min versus 7 s, and the same answer.</text>
+</svg>
+
 ```python
 import asyncio
 import logging
@@ -246,6 +274,52 @@ Two tuning notes specific to this operation. First, the topology self-join scale
 
 Regulatory frameworks — FERC interconnection standards, NEPA environmental review thresholds, and state-level renewable setback mandates — require traceable data provenance. Every validation run must therefore emit an immutable audit record capturing the input metadata, the CRS transformation applied, the per-dimension penalty breakdown, the final QI, and the pass/fail decision. Invalid records are never silently discarded; they are quarantined with explicit error codes (`ERR_TOPOLOGY_RING`, `ERR_MISSING_CAP_MW`, `ERR_OUT_OF_BOUNDS`) so a reviewer can reconstruct exactly why a layer was rejected.
 
+<svg viewBox="0 0 940 400" role="img" aria-label="A worked Quality Index on a real interconnection layer. Geometric validity fails on 2.1 percent of records at weight 0.35, attribute completeness on 9.4 percent at weight 0.30, extent alignment on 0.0 percent at weight 0.15 and topological consistency on 14.0 percent at weight 0.20. The weighted penalties are 0.74, 2.82, 0.00 and 2.80, giving a Quality Index of 93.6 — above a threshold of 85, even though one dimension in four is failing on a seventh of the records." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>A worked Quality Index, and the dimension it hides</title>
+  <desc>A table of the four validation dimensions with, for each, the percentage of failing records, the weight, and the resulting weighted penalty: geometric validity 2.1 percent at 0.35 gives 0.74; attribute completeness 9.4 percent at 0.30 gives 2.82; extent alignment 0.0 percent at 0.15 gives 0.00; topological consistency 14.0 percent at 0.20 gives 2.80. The four penalties sum to 6.36, so the Quality Index is 93.6 out of 100, which clears a threshold of 85. A callout notes that a composite score can pass while a single dimension fails badly, so per-dimension floors belong alongside the composite.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="qi-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One composite score, four dimensions — and what a passing score can conceal</text>
+  <text x="40" y="70" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">dimension</text>
+  <text x="400" y="70" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">records failing</text>
+  <text x="556" y="70" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">weight</text>
+  <text x="700" y="70" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">weighted penalty</text>
+  <rect x="36" y="82" width="868" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="52" y="109" text-anchor="start" font-size="12" fill="currentColor">Geometric validity</text>
+  <text x="400" y="109" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">2.1%</text>
+  <text x="556" y="109" text-anchor="middle" font-size="12" fill="currentColor">0.35</text>
+  <text x="700" y="109" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.73</text>
+  <rect x="790" y="94" width="100" height="18" rx="3" fill="none" stroke="#3D8B5F" stroke-width="1"/>
+  <rect x="790" y="94" width="24.5" height="18" rx="3" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1" opacity="0.55"/>
+  <rect x="36" y="132" width="868" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="52" y="159" text-anchor="start" font-size="12" fill="currentColor">Attribute completeness</text>
+  <text x="400" y="159" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">9.4%</text>
+  <text x="556" y="159" text-anchor="middle" font-size="12" fill="currentColor">0.30</text>
+  <text x="700" y="159" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">2.82</text>
+  <rect x="790" y="144" width="100" height="18" rx="3" fill="none" stroke="#F4A261" stroke-width="1"/>
+  <rect x="790" y="144" width="94.0" height="18" rx="3" fill="#F4A261" stroke="#F4A261" stroke-width="1" opacity="0.55"/>
+  <rect x="36" y="182" width="868" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="52" y="209" text-anchor="start" font-size="12" fill="currentColor">Extent alignment</text>
+  <text x="400" y="209" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.0%</text>
+  <text x="556" y="209" text-anchor="middle" font-size="12" fill="currentColor">0.15</text>
+  <text x="700" y="209" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.00</text>
+  <rect x="790" y="194" width="100" height="18" rx="3" fill="none" stroke="#3D8B5F" stroke-width="1"/>
+  <rect x="790" y="194" width="2" height="18" rx="3" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1" opacity="0.55"/>
+  <rect x="36" y="232" width="868" height="42" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+  <text x="52" y="259" text-anchor="start" font-size="12" fill="currentColor">Topological consistency</text>
+  <text x="400" y="259" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">14.0%</text>
+  <text x="556" y="259" text-anchor="middle" font-size="12" fill="currentColor">0.20</text>
+  <text x="700" y="259" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">2.80</text>
+  <rect x="790" y="244" width="100" height="18" rx="3" fill="none" stroke="#C85B5B" stroke-width="1"/>
+  <rect x="790" y="244" width="93.33333333333333" height="18" rx="3" fill="#C85B5B" stroke="#C85B5B" stroke-width="1" opacity="0.55"/>
+  <text x="400" y="308" text-anchor="end" font-size="12" fill="currentColor" font-weight="700">total penalty</text>
+  <text x="700" y="308" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">6.36</text>
+  <text x="52" y="308" text-anchor="start" font-size="12.5" fill="#1F5C3A" font-weight="700">Quality Index = 100 − 6.36 = 93.6</text>
+  <rect x="36" y="336" width="868" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="470.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor">93.6 clears a threshold of 85 — while 14% of records still overlap each other. A composite score</text>
+  <text x="470.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">needs a per-dimension floor beside it, or the weakest dimension is averaged out of sight.</text>
+</svg>
+
 ```python
 import json
 from datetime import datetime, timezone
@@ -265,6 +339,51 @@ def write_audit(input_path: Path, qi: float, penalties: pd.DataFrame, out_path: 
 ```
 
 A passing layer is stamped with this audit hash and routed to downstream siting models, [regulatory boundary overlays](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/regulatory-boundary-mapping/), or grid topology builders; a failing layer is held in the remediation queue. Wiring the QI threshold into a CI/CD step — spatial tests that run on every pull request before a new boundary or interconnection layer merges — converts data quality from a manual review into an enforced gate, and pairing it with alerting on a sub-threshold score prevents corrupted geometries from ever reaching a feasibility study. The same audit record becomes the evidence package for a regulatory submission, closing the loop from raw download to permitting deliverable.
+
+
+## Frequently asked questions
+
+### Should a failing dataset be repaired automatically or quarantined?
+
+Repair what is provably mechanical and quarantine everything else. `make_valid` on a self-touching
+ring, a precision snap on a duplicate vertex, and a ring-winding correction are deterministic and
+safe to automate. A missing capacity value, an out-of-range voltage or a geometry outside the study
+area are judgement calls that need a human, and automating them produces a dataset that is clean and
+wrong. The split should be visible in the audit record: repaired counts and quarantined counts are
+different numbers.
+
+### What Quality Index threshold is right?
+
+The composite threshold matters less than the per-dimension floors beside it. A weighted index can
+sit comfortably above 85 while one dimension fails on a seventh of the records, because the other
+three average it out. Set the composite threshold where the organisation's tolerance actually sits,
+then add a floor per dimension — no dimension below, say, 95 percent passing — so the weakest
+dimension cannot be hidden by the strongest.
+
+### Does validation belong at ingestion or before analysis?
+
+At ingestion, with a cheaper re-assertion before analysis. Validating at the boundary means the
+working store has one invariant and every consumer can rely on it; re-asserting before an expensive
+analysis catches the case where something wrote to the store outside the pipeline. The re-assertion
+is a few seconds against an indexed frame, which is cheap insurance against a multi-hour run
+producing a defensible-looking wrong answer.
+
+### How do I validate a dataset that has no reference to compare against?
+
+Validate its internal consistency and its physical plausibility, which is most of what a reference
+would have told you. Geometries must be valid and non-overlapping where the domain says they should
+be; capacities must fall in the range the voltage class permits; extents must fall inside the study
+area; and identifiers must be unique. Those four checks catch the large majority of real defects
+without any external truth.
+
+
+### How do the four dimensions interact?
+
+They are not independent, and the correlations are informative. Attribute incompleteness and
+topological inconsistency usually rise together, because both indicate a source that was assembled
+from several vintages; extent misalignment on its own almost always means a CRS problem rather than
+a data problem. Reading the dimension scores as a pattern rather than a single index is what turns
+the report into a diagnosis instead of a grade.
 
 ## Related
 

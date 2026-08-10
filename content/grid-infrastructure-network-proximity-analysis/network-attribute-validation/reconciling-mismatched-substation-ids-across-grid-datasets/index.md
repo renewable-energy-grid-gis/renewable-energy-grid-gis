@@ -23,6 +23,7 @@ Three compounding causes turn a substation join into a data-integrity incident, 
 3. **Spatial-join ambiguity.** Once you fall back to geometry, co-located substations inside a tolerance make the nearest-neighbour assignment non-unique. Worse, a naive nearest join is *many-to-one*: several source nodes can all claim the same target, collapsing distinct assets and double-counting capacity. Distance is also only meaningful after strict [coordinate reference system alignment](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/coordinate-reference-systems-for-energy-projects/) — run nearest search in EPSG:4326 and you are ranking candidates by degrees, not metres.
 
 <svg viewBox="0 0 900 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reconciliation decision flow. Two source layers with mismatched IDs feed a name-normalization step. A fuzzy name match above the score threshold accepts the match directly. Ambiguous or below-threshold candidates route to a spatial nearest tie-break within tolerance in a projected CRS. Both accepted paths pass a one-to-one resolution gate that keeps the highest-confidence pair per target and reports the rest as unmatched rather than dropping them." style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="470"/>
   <title>Attribute-first reconciliation with spatial tie-break and one-to-one resolution</title>
   <desc>Two source substation layers with non-matching identifiers are normalized to a comparable name key. A fuzzy name score above threshold accepts a candidate pair directly. Candidates that are ambiguous or below threshold route right to a spatial nearest tie-break computed within a distance tolerance in a projected CRS. Both accepted paths converge on a one-to-one resolution gate that keeps the single highest-confidence pair per target and emits everything else to an unmatched report instead of dropping it.</desc>
   <defs>
@@ -75,6 +76,49 @@ Three compounding causes turn a substation join into a data-integrity incident, 
 ## Pre-flight validation
 
 Before attempting any match, confirm that the two ingredients the strategy depends on are sound: the candidate keys are actually unique within each layer, and both layers live in a projected metric CRS so the nearest tie-break measures metres. A duplicate key on either side silently converts a one-to-one match into a fan-out; a geographic CRS makes the tolerance meaningless.
+
+<svg viewBox="0 0 940 412" role="img" aria-label="The same substation as it appears in four systems: EIA plant code 55023, the utility SCADA name BRZ_SUB_2 230KV, OpenStreetMap node 3184927265, and an internal asset UUID. No two share a key, none is guaranteed unique across vintages, and only the OSM record carries a geometry, which is why reconciliation has to start from attributes and use position only as a tie-break." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>One substation, four identifier schemes, no shared key</title>
+  <desc>Four record cards for the same physical substation. The EIA record carries plant code 55023, a plant name and a county, but no geometry. The utility SCADA record carries the string BRZ_SUB_2 230KV, a voltage and a control area, with no stable identifier at all. The OpenStreetMap record carries node 3184927265 with a latitude and longitude and free text tags. The internal asset register carries a UUID and the project codes that reference it. Arrows from all four converge on a reconciliation step that matches on normalised name and voltage first, then breaks ties by distance.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="412"/>
+  <defs><marker id="id-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Four systems describe this substation and share no key at all</text>
+  <rect x="34" y="66" width="190" height="70" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="129.0" y="88" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">EIA-860</text>
+  <text x="129.0" y="106" text-anchor="middle" font-size="11.5" fill="currentColor">plant_code 55023</text>
+  <text x="129.0" y="124" text-anchor="middle" font-size="10.5" fill="currentColor">name · county · no geometry</text>
+  <line x1="129" y1="148" x2="470" y2="208" stroke="currentColor" stroke-width="1.1" opacity="0.35" marker-end="url(#id-arr)"/>
+  <rect x="262" y="66" width="190" height="70" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="357.0" y="88" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Utility SCADA</text>
+  <text x="357.0" y="106" text-anchor="middle" font-size="11.5" fill="currentColor">BRZ_SUB_2 230KV</text>
+  <text x="357.0" y="124" text-anchor="middle" font-size="10.5" fill="currentColor">free-text name · voltage</text>
+  <line x1="357" y1="148" x2="470" y2="208" stroke="currentColor" stroke-width="1.1" opacity="0.35" marker-end="url(#id-arr)"/>
+  <rect x="490" y="66" width="190" height="70" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="585.0" y="88" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">OpenStreetMap</text>
+  <text x="585.0" y="106" text-anchor="middle" font-size="11.5" fill="currentColor">node 3184927265</text>
+  <text x="585.0" y="124" text-anchor="middle" font-size="10.5" fill="currentColor">lat/lon · loose tags</text>
+  <line x1="585" y1="148" x2="470" y2="208" stroke="currentColor" stroke-width="1.1" opacity="0.35" marker-end="url(#id-arr)"/>
+  <rect x="718" y="66" width="190" height="70" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="813.0" y="88" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Asset register</text>
+  <text x="813.0" y="106" text-anchor="middle" font-size="11.5" fill="currentColor">uuid 8f2c…d41</text>
+  <text x="813.0" y="124" text-anchor="middle" font-size="10.5" fill="currentColor">internal project links</text>
+  <line x1="813" y1="148" x2="470" y2="208" stroke="currentColor" stroke-width="1.1" opacity="0.35" marker-end="url(#id-arr)"/>
+  <rect x="300" y="214" width="340" height="88" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="470.0" y="236" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">reconcile</text>
+  <text x="470.0" y="254" text-anchor="middle" font-size="11.5" fill="currentColor">1 · normalised name + voltage</text>
+  <text x="470.0" y="272" text-anchor="middle" font-size="11.5" fill="currentColor">2 · distance tie-break under 500 m</text>
+  <text x="470.0" y="290" text-anchor="middle" font-size="11.5" fill="currentColor">3 · one-to-one assignment</text>
+  <line x1="470" y1="316" x2="470" y2="344" stroke="currentColor" stroke-width="1.4" marker-end="url(#id-arr)"/>
+  <rect x="40" y="348" width="228" height="46" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="154.0" y="366" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">1 842</text>
+  <text x="154.0" y="385" text-anchor="middle" font-size="11" fill="currentColor">exact attribute match</text>
+  <rect x="356" y="348" width="228" height="46" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="470.0" y="366" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">318</text>
+  <text x="470.0" y="385" text-anchor="middle" font-size="11" fill="currentColor">name + distance tie-break</text>
+  <rect x="672" y="348" width="228" height="46" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="786.0" y="366" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">47</text>
+  <text x="786.0" y="385" text-anchor="middle" font-size="11" fill="currentColor">unresolved — queued for review</text>
+</svg>
 
 ```python
 import geopandas as gpd
@@ -185,6 +229,43 @@ The `drop_duplicates(subset="index_right")` step is the load-bearing line: it en
 ## Downstream validation
 
 A reconciliation is only trustworthy if it proves it did not silently collapse or drop assets. This assertion function is a CI/CD gate: it fails the build when the match is many-to-one above a confidence floor, or when unmatched features have vanished instead of being reported.
+
+<svg viewBox="0 0 940 372" role="img" aria-label="What happens when a reconciliation is allowed to be many-to-one. Three queue applications each match the same substation record, so the merged frame reports that substation three times and a downstream sum of available capacity triples it. Enforcing a one-to-one assignment — the best match wins and the losers are queued rather than duplicated — keeps the merged row count equal to the input row count, which is the assertion that catches the fault in CI." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Many-to-one joins multiply capacity; one-to-one assignment does not</title>
+  <desc>On the left, three queue applications all matching one substation record, producing three merged rows that each carry the same 45 megawatts of headroom, and a downstream sum of 135 megawatts. On the right, the one-to-one assignment keeps the single best match, routes the other two to a review queue, and the sum stays at 45 megawatts. Below, the CI assertion that distinguishes the two: the merged row count must equal the left-hand row count.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="372"/>
+  <defs><marker id="oo-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">A join that is allowed to duplicate will duplicate capacity</text>
+  <rect x="30" y="70" width="168" height="30" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="114.0" y="91" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">queue app A</text>
+  <line x1="202" y1="96" x2="246" y2="164" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#oo-arr)"/>
+  <rect x="30" y="138" width="168" height="30" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="114.0" y="159" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">queue app B</text>
+  <line x1="202" y1="164" x2="246" y2="164" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#oo-arr)"/>
+  <rect x="30" y="206" width="168" height="30" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="114.0" y="227" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">queue app C</text>
+  <line x1="202" y1="232" x2="246" y2="164" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#oo-arr)"/>
+  <rect x="250" y="140" width="176" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="338.0" y="161" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">substation</text>
+  <text x="338.0" y="178" text-anchor="middle" font-size="11.5" fill="currentColor">45 MW headroom</text>
+  <text x="120" y="296" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">many-to-one merge</text>
+  <rect x="30" y="306" width="396" height="44" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="228" y="334" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">3 rows × 45 MW → sum reports 135 MW</text>
+  <line x1="440" y1="190" x2="480" y2="190" stroke="currentColor" stroke-width="1.4" marker-end="url(#oo-arr)"/>
+  <rect x="496" y="70" width="200" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="596.0" y="91" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">best match wins</text>
+  <text x="596.0" y="108" text-anchor="middle" font-size="11" fill="currentColor">app B ↔ substation</text>
+  <rect x="496" y="148" width="200" height="31" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="596.0" y="169" text-anchor="middle" font-size="11" fill="currentColor">app A → review queue</text>
+  <rect x="496" y="208" width="200" height="31" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="596.0" y="229" text-anchor="middle" font-size="11" fill="currentColor">app C → review queue</text>
+  <text x="716" y="96" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">one-to-one assignment</text>
+  <rect x="716" y="108" width="194" height="44" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="813" y="136" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">sum stays 45 MW</text>
+  <rect x="496" y="288" width="414" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="703.0" y="309" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">CI assertion:</text>
+  <text x="703.0" y="326" text-anchor="middle" font-size="11.5" fill="currentColor">len(merged) == len(applications)</text>
+</svg>
 
 ```python
 import geopandas as gpd

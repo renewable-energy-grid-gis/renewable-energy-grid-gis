@@ -24,7 +24,8 @@ Three distinct failure modes account for nearly every mis-projected wind layout.
 
 3. **US survey foot vs international foot.** Even once you commit to feet, two definitions exist. The US survey foot is $\tfrac{1200}{3937}$ m ≈ `0.3048006096` m; the international foot is exactly `0.3048` m. The ~2 ppm difference is invisible on a turbine footprint but reaches centimetres across a multi-kilometre lease boundary — enough to matter at survey-staking tolerance, and a live hazard now that several states redefined their zones to the international foot in the 2022 datum realignment.
 
-<svg viewBox="0 0 904 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision tree for choosing a projected CRS for a wind farm layout. Start from the site extent bounding box. If the longitude span exceeds one UTM zone or crosses a 6-degree boundary, route to a custom equal-distance frame such as Albers or a Lambert Conformal Conic strip, or CONUS Albers EPSG:5070, rather than a single UTM zone. If the extent fits one zone, choose a metric UTM zone such as EPSG:32610, 32613, or 32614 for metre-native work, or a State Plane zone such as the EPSG:2225 family when the deliverable must match surveyor feet. The State Plane branch carries a mandatory unit check converting US survey feet to metres before any spacing measurement." style="width:100%;max-width:904px;height:auto;font-family:inherit">
+<svg viewBox="0 0 940 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision tree for choosing a projected CRS for a wind farm layout. Start from the site extent bounding box. If the longitude span exceeds one UTM zone or crosses a 6-degree boundary, route to a custom equal-distance frame such as Albers or a Lambert Conformal Conic strip, or CONUS Albers EPSG:5070, rather than a single UTM zone. If the extent fits one zone, choose a metric UTM zone such as EPSG:32610, 32613, or 32614 for metre-native work, or a State Plane zone such as the EPSG:2225 family when the deliverable must match surveyor feet. The State Plane branch carries a mandatory unit check converting US survey feet to metres before any spacing measurement." style="width:100%;max-width:940px;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="940" height="560"/>
   <title>CRS selection decision tree for wind farm layouts: extent to single-zone test to UTM, State Plane, or multi-zone frame</title>
   <desc>A top-to-bottom decision tree. The input is the site extent bounding box. A first diamond tests whether the layout fits inside one UTM or State Plane zone. A "no" branch exits right to a custom multi-zone frame node — an equal-distance Albers or Lambert Conformal Conic strip, or CONUS Albers EPSG:5070. A "yes" branch descends to a second diamond asking whether the deliverable must match surveyor feet. "No" leads to a metric UTM zone node listing EPSG:32610, 32613, and 32614. "Yes" leads to a State Plane zone node listing the EPSG:2225 family in US survey feet, which then passes through a mandatory unit-conversion node that turns US survey feet into metres before any turbine spacing is measured. All paths converge on a final metre-frame measurement node.</desc>
   <defs>
@@ -76,7 +77,7 @@ Three distinct failure modes account for nearly every mis-projected wind layout.
   <!-- Convergence to final measure node -->
   <path d="M110,334 V470 H432" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#wf-arr)"/>
   <path d="M762,432 V470 H448" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#wf-arr)"/>
-  <path d="M762,184 V210 H812 V470 H448" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#wf-arr)"/>
+  <path d="M762,184 V210 H916 V470 H448" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#wf-arr)"/>
   <rect x="324" y="472" width="232" height="52" rx="7" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="2"/>
   <text x="440" y="493" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">Measure spacing in metres</text>
   <text x="440" y="511" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">turbine_spacing_m()</text>
@@ -85,6 +86,58 @@ Three distinct failure modes account for nearly every mis-projected wind layout.
 ## Pre-flight validation
 
 Before any layout is reprojected, decide *which* projected CRS is defensible for the site's extent, and refuse the run if the requested frame does not fit. The validator below takes the layout in geographic coordinates (`EPSG:4326`), derives the UTM zone(s) the extent touches, and flags the multi-zone case and the feet-unit case explicitly.
+
+<svg viewBox="0 0 920 400" role="img" aria-label="Transverse Mercator scale factor across the width of a UTM zone, plotted from k equals 0.9996 times one plus x squared over twice the earth radius squared. The factor is 0.9996 on the central meridian, reaches exactly 1.0 about 180 kilometres either side, and rises to about 1.0007 at the zone edge. A 400 metre turbine spacing therefore measures 16 centimetres short on the central meridian and 28 centimetres long at the edge — so two turbines measured on opposite sides of a seam disagree by roughly 44 centimetres per 400 metres." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Scale factor across a UTM zone, and what it costs a 400 m turbine spacing</title>
+  <desc>A symmetric curve over a horizontal axis running from 320 kilometres west of the central meridian to 320 kilometres east. The vertical axis is the scale factor from 0.9994 to 1.0008. The curve sits at its minimum of 0.9996 on the central meridian, crosses 1.0 at plus and minus 180 kilometres, and rises to 1.00071 at plus and minus 300 kilometres. Two shaded bands mark where measured distance runs short and where it runs long, with callouts converting the factor into metres of error on a 400 metre spacing.</desc>
+  <rect class="svg-bg" x="0" y="0" width="920" height="400"/>
+  <defs><marker id="sf-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One UTM zone is not one scale: k varies with distance from the central meridian</text>
+  <rect x="96" y="66" width="732" height="114.46666666666465" rx="0" fill="#DCEEF6" opacity="0.55"/>
+  <rect x="96" y="180.46666666666465" width="732" height="87.53333333333535" rx="0" fill="#FFE3BE" opacity="0.5"/>
+  <line x1="96" y1="268" x2="828" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="96" y1="66" x2="96" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="92" y1="261.2666666666677" x2="828" y2="261.2666666666677" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="265.2666666666677" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0.9994</text>
+  <line x1="92" y1="234.33333333332337" x2="828" y2="234.33333333332337" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="238.33333333332337" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0.9996</text>
+  <line x1="92" y1="207.399999999994" x2="828" y2="207.399999999994" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="211.399999999994" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0.9998</text>
+  <line x1="92" y1="180.46666666666465" x2="828" y2="180.46666666666465" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+  <text x="86" y="184.46666666666465" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">1.0000</text>
+  <line x1="92" y1="153.53333333333535" x2="828" y2="153.53333333333535" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="157.53333333333535" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">1.0002</text>
+  <line x1="92" y1="126.60000000000596" x2="828" y2="126.60000000000596" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="130.60000000000596" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">1.0004</text>
+  <line x1="92" y1="99.66666666667663" x2="828" y2="99.66666666667663" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="103.66666666667663" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">1.0006</text>
+  <line x1="92" y1="72.73333333334728" x2="828" y2="72.73333333334728" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="86" y="76.73333333334728" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">1.0008</text>
+  <line x1="96.0" y1="268" x2="96.0" y2="273" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+  <text x="96.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">-320 km</text>
+  <line x1="256.125" y1="268" x2="256.125" y2="273" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+  <text x="256.125" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">-180 km</text>
+  <line x1="462.0" y1="268" x2="462.0" y2="273" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+  <text x="462.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">central meridian</text>
+  <line x1="667.875" y1="268" x2="667.875" y2="273" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+  <text x="667.875" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">+180 km</text>
+  <line x1="828.0" y1="268" x2="828.0" y2="273" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+  <text x="828.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">+320 km</text>
+  <path d="M96.0,64.5 L100.6,68.8 L105.2,72.9 L109.7,77.0 L114.3,81.1 L118.9,85.1 L123.5,89.0 L128.0,92.9 L132.6,96.8 L137.2,100.6 L141.8,104.3 L146.3,108.0 L150.9,111.7 L155.5,115.2 L160.1,118.8 L164.6,122.2 L169.2,125.7 L173.8,129.0 L178.4,132.3 L182.9,135.6 L187.5,138.8 L192.1,142.0 L196.7,145.1 L201.2,148.1 L205.8,151.1 L210.4,154.1 L214.9,157.0 L219.5,159.8 L224.1,162.6 L228.7,165.3 L233.2,168.0 L237.8,170.6 L242.4,173.2 L247.0,175.7 L251.5,178.2 L256.1,180.6 L260.7,183.0 L265.3,185.3 L269.9,187.5 L274.4,189.7 L279.0,191.9 L283.6,194.0 L288.1,196.0 L292.7,198.0 L297.3,199.9 L301.9,201.8 L306.4,203.7 L311.0,205.4 L315.6,207.2 L320.2,208.8 L324.8,210.5 L329.3,212.0 L333.9,213.5 L338.5,215.0 L343.1,216.4 L347.6,217.8 L352.2,219.1 L356.8,220.3 L361.3,221.5 L365.9,222.6 L370.5,223.7 L375.1,224.8 L379.7,225.7 L384.2,226.7 L388.8,227.5 L393.4,228.4 L397.9,229.1 L402.5,229.8 L407.1,230.5 L411.7,231.1 L416.2,231.7 L420.8,232.2 L425.4,232.6 L430.0,233.0 L434.6,233.4 L439.1,233.7 L443.7,233.9 L448.3,234.1 L452.8,234.2 L457.4,234.3 L462.0,234.3 L466.6,234.3 L471.1,234.2 L475.7,234.1 L480.3,233.9 L484.9,233.7 L489.4,233.4 L494.0,233.0 L498.6,232.6 L503.2,232.2 L507.8,231.7 L512.3,231.1 L516.9,230.5 L521.5,229.8 L526.0,229.1 L530.6,228.4 L535.2,227.5 L539.8,226.7 L544.4,225.7 L548.9,224.8 L553.5,223.7 L558.1,222.6 L562.6,221.5 L567.2,220.3 L571.8,219.1 L576.4,217.8 L581.0,216.4 L585.5,215.0 L590.1,213.5 L594.7,212.0 L599.2,210.5 L603.8,208.8 L608.4,207.2 L613.0,205.4 L617.6,203.7 L622.1,201.8 L626.7,199.9 L631.3,198.0 L635.9,196.0 L640.4,194.0 L645.0,191.9 L649.6,189.7 L654.1,187.5 L658.7,185.3 L663.3,183.0 L667.9,180.6 L672.4,178.2 L677.0,175.7 L681.6,173.2 L686.2,170.6 L690.8,168.0 L695.3,165.3 L699.9,162.6 L704.5,159.8 L709.1,157.0 L713.6,154.1 L718.2,151.1 L722.8,148.1 L727.4,145.1 L731.9,142.0 L736.5,138.8 L741.1,135.6 L745.6,132.3 L750.2,129.0 L754.8,125.7 L759.4,122.2 L763.9,118.8 L768.5,115.2 L773.1,111.7 L777.7,108.0 L782.2,104.3 L786.8,100.6 L791.4,96.8 L796.0,92.9 L800.6,89.0 L805.1,85.1 L809.7,81.1 L814.3,77.0 L818.9,72.9 L823.4,68.8 L828.0,64.5" fill="none" stroke="#5BA8C8" stroke-width="2.4"/>
+  <circle cx="256.125" cy="180.46666666666465" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="667.875" cy="180.46666666666465" r="4.5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <text x="462.0" y="256.33333333332337" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">k = 0.9996 — measured distance runs short</text>
+  <text x="805.125" y="71.09387590624587" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">k = 1.00071</text>
+  <text x="256.125" y="166.46666666666465" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">k = 1 exactly</text>
+  <rect x="20" y="300" width="424" height="65" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="232.0" y="321" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">400 m spacing on the central meridian</text>
+  <text x="232.0" y="338" text-anchor="middle" font-size="11.5" fill="currentColor">measures 399.84 m — 16 cm short</text>
+  <text x="232.0" y="355" text-anchor="middle" font-size="11.5" fill="currentColor">a 5 km string loses 2.0 m end to end</text>
+  <rect x="472" y="300" width="428" height="65" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="686.0" y="321" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">The same 400 m at the zone edge</text>
+  <text x="686.0" y="338" text-anchor="middle" font-size="11.5" fill="currentColor">measures 400.28 m — 28 cm long</text>
+  <text x="686.0" y="355" text-anchor="middle" font-size="11.5" fill="currentColor">across a seam the two disagree by 44 cm</text>
+</svg>
 
 ```python
 import math
@@ -209,6 +262,31 @@ where $\lambda - \lambda_0$ is the longitude offset from the zone's central meri
 ## Downstream validation
 
 Gate the layout before it reaches a micrositing report or an interconnection package. This assertion, suitable for a CI/CD step, fails the build if the output frame is geographic, still in feet, or spans a zone it cannot represent — the class of regression a quick reference like the [projection and CRS quick reference](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/projection-and-crs-quick-reference/) exists to help teams check against.
+
+<svg viewBox="0 0 920 340" role="img" aria-label="What the bare number 400 means in each axis unit a wind layout might be measured in. In metres it is 400 metres. In international feet it is 121.920 metres. In US survey feet it is 121.9202 metres. The unit trap is a factor of 3.28, while the two foot definitions differ by only 2 parts per million — invisible on one spacing, but 1.0 centimetre across a 5 kilometre lease boundary." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The number 400 in three axis units, and the two errors it can hide</title>
+  <desc>A horizontal bar chart of the true ground length of the number 400 in three axis units: 400.000 metres in metres, 121.920 metres in international feet, and 121.9202 metres in US survey feet. A callout marks the 3.28 times error of treating a State Plane foot value as metres. A second panel compares the two foot definitions over a 5 kilometre lease boundary, where the 2 parts per million difference amounts to 1.0 centimetre — below spacing tolerance but inside survey staking tolerance.</desc>
+  <rect class="svg-bg" x="0" y="0" width="920" height="340"/>
+  <defs><marker id="ft-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">A threshold of 400 is not a distance until the axis unit is known</text>
+  <rect x="250" y="58" width="437.2" height="44.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="240" y="84.0" text-anchor="end" font-size="11.5" fill="currentColor">metre</text>
+  <text x="695.2093023255813" y="84.0" text-anchor="start" font-size="11.5" fill="currentColor">400.0000 m on the ground</text>
+  <rect x="250" y="111.0" width="133.3" height="44.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="240" y="137.0" text-anchor="end" font-size="11.5" fill="currentColor">international foot</text>
+  <text x="391.2613953488372" y="137.0" text-anchor="start" font-size="11.5" fill="currentColor">121.9200 m on the ground</text>
+  <rect x="250" y="164.0" width="133.3" height="44.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="240" y="190.0" text-anchor="end" font-size="11.5" fill="currentColor">US survey foot</text>
+  <text x="391.26161395348834" y="190.0" text-anchor="start" font-size="11.5" fill="currentColor">121.9202 m on the ground</text>
+  <rect x="20" y="232" width="424" height="65" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="232.0" y="253" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Applying a 400 “metre” rule in EPSG:2225</text>
+  <text x="232.0" y="270" text-anchor="middle" font-size="11.5" fill="currentColor">enforces 121.92 m — a 3.28× under-spacing</text>
+  <text x="232.0" y="287" text-anchor="middle" font-size="11.5" fill="currentColor">that still passes every geometry check</text>
+  <rect x="472" y="232" width="428" height="65" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="686.0" y="253" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">ftUS versus international foot: 2 ppm</text>
+  <text x="686.0" y="270" text-anchor="middle" font-size="11.5" fill="currentColor">1.0 cm over a 5 km lease boundary —</text>
+  <text x="686.0" y="287" text-anchor="middle" font-size="11.5" fill="currentColor">inside staking tolerance, so record the vintage</text>
+</svg>
 
 ```python
 import pyproj

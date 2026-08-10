@@ -15,6 +15,7 @@ Terrain and shadow analysis is the validation layer that decides whether a resou
 The goal is deterministic: convert raw elevation into a binary or fractional shadow mask, plus slope and aspect derivatives, that align pixel-for-pixel with the irradiance surface they will modulate, carry explicit provenance, and quantify terrain-induced losses *before* the financial model consumes them. This page covers the conceptual foundation, the prerequisites, a full runnable horizon-and-shadow function, the failure modes that break naive shadow casting, the scalability patterns for high-resolution lidar-derived DEMs, and the audit trail that makes a terrain-loss figure bankable in permitting and project-finance review.
 
 <svg viewBox="0 0 940 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Terrain and shadow analysis pipeline: DEM ingest flows through a CRS and vertical-datum validation gate that rejects drifted grids, then slope and aspect derivatives, vectorized horizon profiling, a fractional shadow mask, an alignment check against the irradiance grid, irradiance modulation, and a bankable terrain-loss percentage." style="width:100%;max-width:940px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="940" height="320"/>
   <title>Terrain &amp; Shadow Analysis Pipeline</title>
   <desc>A snake-layout data-flow diagram. The top row runs left to right: Stage 1 DEM ingest from lidar or SRTM; Stage 2 a CRS and vertical-datum validation gate, drawn dashed, with a side branch labelled "drift, reject" that diverts misregistered or unit-mismatched grids out of the pipeline; Stage 3 slope and aspect derivatives; Stage 4 vectorized horizon profiling by cumulative-max ray sweep. The flow then drops down on the right and the bottom row runs right to left: Stage 5 the fractional shadow mask; Stage 6 an alignment check against the upstream irradiance grid; the "aligned" path then feeds Stage 7 irradiance modulation, which dims the direct beam; and the highlighted terminal artifact is the bankable, audit-tagged terrain-loss percentage.</desc>
   <defs>
@@ -109,6 +110,51 @@ Because $d$ must be a true metric distance, this formula is only valid once the 
 ## Core implementation
 
 The loader below enforces a metric projection and a sane vertical range, then generates memory-safe windows for chunked execution. It rejects geographic CRS inputs early, because degree-based runs make the `arctan` horizon angle meaningless. Variable names are energy-specific throughout.
+
+<svg viewBox="0 0 940 400" role="img" aria-label="How slope is computed from a DEM. The Horn method reads the eight neighbours of each cell, weights the four cardinal neighbours double, and forms east-west and north-south gradients; slope is the arctangent of their combined magnitude divided by the cell size. Two consequences follow: the result depends on the cell size, so a 30 metre DEM and a 10 metre DEM give different slopes for the same hill, and the outermost ring of cells has no complete neighbourhood and must be masked, not guessed." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Slope from a DEM: the 3 by 3 Horn kernel and its two consequences</title>
+  <desc>On the left, a 3 by 3 cell neighbourhood labelled a through i with the centre cell highlighted, and the two Horn weight stencils: the east-west gradient weights the left and right columns with 1, 2, 1 and the north-south gradient weights the top and bottom rows the same way. In the middle, the formulae for the two gradients and the arctangent that turns them into a slope in degrees. On the right, two consequences: the same hill measured on a 30 metre and a 10 metre DEM gives 8.4 and 11.2 degrees, and the outer ring of cells has no complete neighbourhood and is masked rather than extrapolated.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="hn-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Slope is a property of the DEM as much as of the hill</text>
+  <rect x="44" y="76" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="73.0" y="114" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">a</text>
+  <rect x="106" y="76" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="135.0" y="114" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">b</text>
+  <rect x="168" y="76" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="197.0" y="114" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">c</text>
+  <rect x="44" y="138" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="73.0" y="176" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">d</text>
+  <rect x="106" y="138" width="58" height="58" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6"/>
+  <text x="135.0" y="176" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">e</text>
+  <rect x="168" y="138" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="197.0" y="176" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">f</text>
+  <rect x="44" y="200" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="73.0" y="238" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">g</text>
+  <rect x="106" y="200" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="135.0" y="238" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">h</text>
+  <rect x="168" y="200" width="58" height="58" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1.1"/>
+  <text x="197.0" y="238" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">i</text>
+  <text x="135.0" y="282" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">3 × 3 neighbourhood</text>
+  <rect x="266" y="78" width="330" height="111" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="431.0" y="100" text-anchor="middle" font-size="11.5" fill="currentColor">dz/dx = ((c + 2f + i) − (a + 2d + g))</text>
+  <text x="431.0" y="119" text-anchor="middle" font-size="11.5" fill="currentColor">        ÷ (8 × cellsize)</text>
+  <text x="431.0" y="138" text-anchor="middle" font-size="11.5" fill="currentColor">dz/dy = ((g + 2h + i) − (a + 2b + c))</text>
+  <text x="431.0" y="157" text-anchor="middle" font-size="11.5" fill="currentColor">        ÷ (8 × cellsize)</text>
+  <text x="431.0" y="176" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">slope = atan(√(dz/dx² + dz/dy²))</text>
+  <rect x="620" y="78" width="296" height="92" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="768.0" y="100" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Same hill, two DEMs</text>
+  <text x="768.0" y="119" text-anchor="middle" font-size="11.5" fill="currentColor">30 m cells → 8.4° mean slope</text>
+  <text x="768.0" y="138" text-anchor="middle" font-size="11.5" fill="currentColor">10 m cells → 11.2° mean slope</text>
+  <text x="768.0" y="157" text-anchor="middle" font-size="11" fill="currentColor">finer cells resolve steeper local relief</text>
+  <rect x="620" y="214" width="296" height="73" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="768.0" y="236" text-anchor="middle" font-size="11.5" fill="currentColor">The outer ring has no full 3 × 3</text>
+  <text x="768.0" y="255" text-anchor="middle" font-size="11.5" fill="currentColor">neighbourhood — mask it, never</text>
+  <text x="768.0" y="274" text-anchor="middle" font-size="11.5" fill="currentColor">extrapolate a border value</text>
+  <rect x="44" y="320" width="872" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="480.0" y="341" text-anchor="middle" font-size="11.5" fill="currentColor">Record the DEM resolution beside every slope statistic. A 15% slope limit is not a threshold until the</text>
+  <text x="480.0" y="358" text-anchor="middle" font-size="11.5" fill="currentColor">grid it was measured on is named — the same terrain passes on one DEM and fails on another.</text>
+</svg>
 
 ```python
 import logging
@@ -240,6 +286,74 @@ horizon = np.fmax(horizon, np.nan_to_num(angle, nan=-np.inf))
 ## Performance and scalability
 
 High-resolution DEMs routinely exceed RAM once paired with a multi-temporal solar-position array, so scaling is about bounding memory and overlapping I/O, not buying more of either:
+
+<svg viewBox="0 0 940 404" role="img" aria-label="How a horizon profile is sampled. From the site, rays are cast at a fixed azimuth step — 5 degrees gives 72 rays — and along each ray the DEM is sampled at increasing distance out to a cut-off, usually 20 to 50 kilometres. The horizon angle for that azimuth is the maximum elevation angle found along the ray. The two parameters that decide the answer are the azimuth step, which sets angular resolution, and the cut-off distance, which decides whether a distant ridge is seen at all." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Casting rays: azimuth step and cut-off distance</title>
+  <desc>A plan view centred on the site with rays radiating outward every 15 degrees for legibility, annotated as a 5 degree step in practice. Sample points are marked along one highlighted ray at increasing distance. Two range rings mark a 20 kilometre and a 50 kilometre cut-off, with a ridge drawn between them that is invisible at the shorter cut-off. Beside the plan, an elevation-angle profile along the highlighted ray showing the maximum angle found, which becomes the horizon angle for that azimuth.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="404"/>
+  <defs><marker id="hz-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One horizon profile is 72 rays, each sampled to a cut-off</text>
+  <circle cx="240" cy="210" r="78" fill="none" stroke="#5BA8C8" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.7"/>
+  <circle cx="240" cy="210" r="140" fill="none" stroke="#5BA8C8" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.5"/>
+  <text x="296" y="152" text-anchor="middle" font-size="10.5" fill="#2C6E8F">20 km</text>
+  <text x="344" y="110" text-anchor="middle" font-size="10.5" fill="#2C6E8F">50 km</text>
+  <line x1="240" y1="210" x2="380.0" y2="210.0" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="375.2296156804696" y2="246.23466631435292" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="361.24355652982143" y2="280.0" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="338.99494936611666" y2="308.99494936611666" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="310.0" y2="331.2435565298214" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="276.2346663143529" y2="345.2296156804696" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="240.0" y2="350.0" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="203.7653336856471" y2="345.2296156804696" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="170.00000000000003" y2="331.24355652982143" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="141.00505063388334" y2="308.99494936611666" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="118.75644347017858" y2="280.0" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="104.77038431953045" y2="246.23466631435295" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="100.0" y2="210.00000000000003" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="104.77038431953045" y2="173.76533368564708" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="118.75644347017857" y2="140.00000000000006" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="141.0050506338833" y2="111.0050506338834" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="169.99999999999994" y2="88.75644347017862" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="203.7653336856471" y2="74.77038431953045" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="239.99999999999997" y2="70.0" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="276.23466631435286" y2="74.77038431953042" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="310.0" y2="88.7564434701786" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="338.99494936611666" y2="111.00505063388333" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="361.2435565298214" y2="139.99999999999994" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="375.2296156804695" y2="173.76533368564697" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+  <line x1="240" y1="210" x2="365.4510134662711" y2="124.17434404395462" stroke="#F4A261" stroke-width="2.4"/>
+  <circle cx="264.76006844729034" cy="193.06072579814895" r="3.4" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="287.8694656647613" cy="177.25073654308795" r="3.4" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="310.9788628822323" cy="161.44074728802696" r="3.4" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="334.08826009970335" cy="145.63075803296596" r="3.4" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="357.19765731717433" cy="129.82076877790496" r="3.4" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <path d="M336,94 L364,76 L392,102" fill="none" stroke="#3D8B5F" stroke-width="3"/>
+  <text x="368" y="62" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">ridge at 34 km</text>
+  <circle cx="240" cy="210" r="5" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <text x="240" y="386" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">azimuth step 15° shown · 5° used in practice</text>
+  <line x1="470" y1="268" x2="900" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="470" y1="90" x2="470" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <path d="M470.0,268.0 L521.6,222.8 L573.2,237.9 L624.8,199.2 L676.4,212.1 L762.4,121.8 L814.0,201.3 L900.0,220.7" fill="none" stroke="#F4A261" stroke-width="2.4"/>
+  <circle cx="762.4000000000001" cy="121.80000000000001" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <text x="772.4000000000001" y="111.80000000000001" text-anchor="start" font-size="11.5" fill="#7A4A1A" font-weight="700">horizon angle 6.8° at 34 km</text>
+  <line x1="466" y1="268.0" x2="900" y2="268.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="460" y="272.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0°</text>
+  <line x1="466" y1="182.0" x2="900" y2="182.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="460" y="186.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">4°</text>
+  <line x1="466" y1="96.0" x2="900" y2="96.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="460" y="100.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">8°</text>
+  <text x="470.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">0 km</text>
+  <text x="642.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">20 km</text>
+  <text x="762.4000000000001" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">34 km</text>
+  <text x="900.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">50 km</text>
+  <text x="470" y="80" text-anchor="start" font-size="11" fill="currentColor" opacity="0.8">elevation angle along the highlighted ray</text>
+  <rect x="470" y="306" width="430" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="685.0" y="327" text-anchor="middle" font-size="11.5" fill="currentColor">A 20 km cut-off never sees the 34 km ridge</text>
+  <text x="685.0" y="344" text-anchor="middle" font-size="11.5" fill="currentColor">and under-reports winter shading</text>
+  <rect x="30" y="306" width="420" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="240.0" y="327" text-anchor="middle" font-size="11.5" fill="currentColor">72 rays × 500 samples = 36 000 DEM reads</text>
+  <text x="240.0" y="344" text-anchor="middle" font-size="11.5" fill="currentColor">per site — window the DEM once, not per ray</text>
+</svg>
 
 - **Profile once, evaluate many.** Cache the per-azimuth horizon profile per tile; quantise the sun's azimuth to a fixed set of bins (e.g. 1° or 2°) and reuse the nearest cached profile across every timestamp. This is the change that turns an intractable $O(N \times T \times R)$ sweep into a tractable one.
 - **Windowed reads, tiled writes, overlap halo.** Read with `rasterio` windows, write tiled LZW-compressed output, and carry the halo above so cross-tile shadows survive chunking. Peak memory then scales with one tile plus its halo, not the whole DEM.

@@ -25,6 +25,7 @@ Second, **geographic-frame distortion**. Geographic coordinates ([EPSG:4326](htt
 Third, **topological invalidity**. Multi-source merges introduce self-intersections, duplicate vertices, zero-length segments, and sliver artifacts during digitization. These pass a casual visual inspection but raise `GEOSException` deep inside a later `buffer`, `intersection`, or `dissolve` call — aborting a batch hours into a run with an opaque traceback that points at the consuming operation, not the corrupt geometry that caused it.
 
 <svg viewBox="0 0 900 432" role="img" aria-label="Side-by-side comparison of two transmission-asset ingest paths. The naive path reads raw mixed-format voltage strings, casts them to integers (raising on the cast or silently dropping live assets), keeps geometry in unprojected EPSG:4326, then computes a latitude-distorted distance that crashes a later buffer with a GEOSException — yielding a corrupt layer that poisons every downstream proximity result. The correct path parses voltage with a tolerant regex into a nullable integer, filters at the 115 kV threshold while quarantining rejects, projects to UTM metres in EPSG:32612, repairs topology with make_valid, and produces a clean projected geodatabase fit for deterministic spatial queries." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="432"/>
   <title>Naive versus correct transmission-asset ingest</title>
   <desc>Two stacked four-stage pipelines. Left (naive): raw mixed voltage strings to integer cast that errors or silently drops live assets, to unprojected EPSG:4326 geometry, to a distorted distance and GEOSException on buffer; outcome a corrupt layer that poisons proximity results. Right (correct): tolerant regex voltage parse to nullable Int64, to a 115 kV threshold filter with quarantined rejects, to projection into UTM metres EPSG:32612, to make_valid topology repair; outcome a clean projected geodatabase for deterministic queries.</desc>
   <rect x="20" y="50" width="420" height="368" rx="12" fill="none" stroke="currentColor" stroke-width="1" opacity="0.22"/>
@@ -98,6 +99,51 @@ This workflow assumes the following inputs and constraints:
 ## Core Implementation
 
 The happy-path workflow has three stages that must run in order: harmonize the schema and enforce the voltage threshold, project to a metric CRS and repair topology, then validate and persist. The first stage parses voltage robustly and quarantines — rather than discards — anything that fails, so no live asset is lost to a brittle cast and every rejection carries a reason code.
+
+<svg viewBox="0 0 940 440" role="img" aria-label="The OpenStreetMap power tags a transmission ingest has to distinguish, and what each one is. power=line is a high-voltage overhead circuit and is what a transmission layer wants; power=minor_line is a distribution feeder and is not; power=cable is underground and carries no tower geometry; power=tower and power=pole are the structures, not the circuit; power=substation is an area, sometimes a node. Filtering on power alone, without a voltage floor, pulls the entire distribution network into a transmission dataset." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Six power tags, three that belong in a transmission layer</title>
+  <desc>A table of six OpenStreetMap power tag values with, for each, what it represents, its geometry type and whether it belongs in a transmission layer. power=line is a high voltage overhead circuit drawn as a way and belongs. power=minor_line is a distribution feeder drawn as a way and does not. power=cable is an underground circuit drawn as a way and belongs. power=tower and power=pole are structures drawn as nodes and belong only as supports. power=substation is an area or occasionally a node and belongs as the network node it represents.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="440"/>
+  <defs><marker id="pw-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">power=* is not a voltage filter</text>
+  <text x="60" y="72" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">tag</text>
+  <text x="300" y="72" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">what it is</text>
+  <text x="600" y="72" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">geometry</text>
+  <text x="790" y="72" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">in a transmission layer?</text>
+  <rect x="40" y="84" width="868" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="111" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">power=line</text>
+  <text x="300" y="111" text-anchor="start" font-size="11.5" fill="currentColor">HV overhead circuit</text>
+  <text x="600" y="111" text-anchor="middle" font-size="11.5" fill="currentColor">way</text>
+  <text x="790" y="111" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">yes</text>
+  <rect x="40" y="134" width="868" height="42" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="161" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">power=minor_line</text>
+  <text x="300" y="161" text-anchor="start" font-size="11.5" fill="currentColor">distribution feeder</text>
+  <text x="600" y="161" text-anchor="middle" font-size="11.5" fill="currentColor">way</text>
+  <text x="790" y="161" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">no</text>
+  <rect x="40" y="184" width="868" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="211" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">power=cable</text>
+  <text x="300" y="211" text-anchor="start" font-size="11.5" fill="currentColor">underground circuit</text>
+  <text x="600" y="211" text-anchor="middle" font-size="11.5" fill="currentColor">way</text>
+  <text x="790" y="211" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">yes</text>
+  <rect x="40" y="234" width="868" height="42" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="261" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">power=tower</text>
+  <text x="300" y="261" text-anchor="start" font-size="11.5" fill="currentColor">lattice support</text>
+  <text x="600" y="261" text-anchor="middle" font-size="11.5" fill="currentColor">node</text>
+  <text x="790" y="261" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">as support</text>
+  <rect x="40" y="284" width="868" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="311" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">power=pole</text>
+  <text x="300" y="311" text-anchor="start" font-size="11.5" fill="currentColor">wooden/steel pole</text>
+  <text x="600" y="311" text-anchor="middle" font-size="11.5" fill="currentColor">node</text>
+  <text x="790" y="311" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">rarely</text>
+  <rect x="40" y="334" width="868" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="361" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">power=substation</text>
+  <text x="300" y="361" text-anchor="start" font-size="11.5" fill="currentColor">switching/transform yard</text>
+  <text x="600" y="361" text-anchor="middle" font-size="11.5" fill="currentColor">area or node</text>
+  <text x="790" y="361" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">yes</text>
+  <rect x="40" y="390" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="411" text-anchor="middle" font-size="11.5" fill="currentColor">The working filter is power in (line, cable) AND voltage ≥ 69 000 — the voltage floor is what keeps a</text>
+  <text x="474.0" y="428" text-anchor="middle" font-size="11.5" fill="currentColor">national extract from arriving with 400 000 distribution feeders attached.</text>
+</svg>
 
 Voltage strings are parsed with a regex that tolerates the common encodings, cast to a nullable integer column, and filtered against the 115 kV operational threshold. Assets failing voltage validation or lacking required metadata are routed to a quarantine frame with an explicit `quarantine_reason`.
 
@@ -181,6 +227,37 @@ def project_and_validate(
 ## Error Handling & Edge Cases
 
 The three failure modes named in the problem framing each need explicit handling rather than a hope that the input is clean.
+
+<svg viewBox="0 0 940 392" role="img" aria-label="What the OpenStreetMap voltage tag looks like across 61,000 extracted line ways, and how each shape must be handled. 68 percent are a single integer in volts and parse directly. 17 percent are semicolon-separated multi-circuit values such as 230000;115000, which must become one record per circuit or the circuit-kilometre total is understated. 6 percent carry units or ranges — 230 kV, 110-220 kV — and need parsing rules. 9 percent are absent and must be inferred from the operator and reference or quarantined." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Four shapes of the voltage tag, and what each one costs</title>
+  <desc>A stacked bar over 61,000 extracted line ways divided into four segments: 68 percent single integer values that parse directly, 17 percent semicolon-separated multi-circuit values, 6 percent values carrying units or ranges, and 9 percent absent. Each segment is annotated with its handling rule: parse directly, split into one record per circuit, apply a parsing rule, or infer and flag. A note records that treating the multi-circuit segment as a single circuit understates national circuit-kilometres by about 12 percent.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="vt-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">voltage=* across 61 000 extracted line ways</text>
+  <rect x="40" y="68" width="590.24" height="54" rx="5" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="335.12" y="100" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">68%</text>
+  <rect x="630.24" y="68" width="147.56" height="54" rx="5" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="704.02" y="100" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">17%</text>
+  <rect x="777.8" y="68" width="52.08" height="54" rx="5" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="803.8399999999999" y="100" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">6%</text>
+  <rect x="829.88" y="68" width="78.12" height="54" rx="5" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="868.94" y="100" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">9%</text>
+  <rect x="40" y="148" width="16" height="16" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="66" y="161" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">single integer — parse directly</text>
+  <rect x="40" y="176" width="16" height="16" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="66" y="189" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">semicolon multi-circuit — split per circuit</text>
+  <rect x="40" y="204" width="16" height="16" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="66" y="217" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">units or range — apply parsing rules</text>
+  <rect x="40" y="232" width="16" height="16" rx="3" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="66" y="245" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">absent — infer from operator, else quarantine</text>
+  <rect x="40" y="274" width="424" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="252.0" y="295" text-anchor="middle" font-size="11.5" fill="currentColor">Treating &quot;230000;115000&quot; as one circuit</text>
+  <text x="252.0" y="312" text-anchor="middle" font-size="11.5" fill="currentColor">understates circuit-km by about 12%</text>
+  <rect x="488" y="274" width="420" height="48" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="698.0" y="295" text-anchor="middle" font-size="11.5" fill="currentColor">The 9% with no voltage are not noise —</text>
+  <text x="698.0" y="312" text-anchor="middle" font-size="11.5" fill="currentColor">they cluster on newly mapped corridors</text>
+  <text x="40" y="360" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Split multi-circuit ways before any length aggregation, never after.</text>
+</svg>
 
 **Unparseable or unit-ambiguous voltage.** A `"230kV / 138kV"` double-circuit tag or a blank voltage field feeds the threshold filter a `<NA>` that should route to quarantine, never to a silent integer error. The parser above coerces to a nullable `Int64` and folds volts to kilovolts; the assertion below makes the contract explicit so a regression surfaces in CI rather than in a siting result.
 
@@ -334,6 +411,31 @@ if __name__ == "__main__":
 ```
 
 The `data_source`, `target_epsg`, `validation_status`, and `processing_timestamp` columns are not decorative — they are the provenance that lets an interconnection study or environmental review be independently re-run and arrive at the same network backbone. For projection-zone selection and metric-degradation warnings consult the [GeoPandas projections guide](https://geopandas.org/en/stable/docs/user_guide/projections.html), and for the geometry-repair semantics behind `make_valid` the [Shapely validation reference](https://shapely.readthedocs.io/en/stable/manual.html#shapely.validation.make_valid). By enforcing strict schema alignment, explicit metric projection, topological sanitization, and memory-safe execution at this stage, project developers and environmental tech teams eliminate the cascading errors that otherwise derail interconnection queue modeling — turning fragmented utility exports and open-source contributions into a deterministic, audit-ready foundation for multi-year grid modernization initiatives.
+
+
+## Frequently asked questions
+
+### How should multi-circuit ways be represented?
+
+As one record per circuit, split before any length aggregation. A way tagged
+`voltage=230000;115000` carries two circuits along one physical corridor, and treating it as a
+single record understates circuit-kilometres — nationally by roughly a tenth. Splitting after
+aggregation does not help, because the aggregate has already been formed. Carry a `corridor_id` on
+both records so the physical structure is still recoverable.
+
+### Should underground cable be included in a transmission layer?
+
+Yes, with an explicit `underground` flag. Cable sections have no tower geometry, different thermal
+behaviour and different permitting treatment, so a model that silently mixes them with overhead
+lines will misestimate both capacity and constructability. The flag is what lets a downstream query
+ask for the corridor either way.
+
+### What identifies a substation when the source has no stable ID?
+
+A normalised name plus a nominal voltage class plus position, in that order of authority, with a
+one-to-one assignment enforced at the end. Names alone collide across utilities; position alone
+merges adjacent yards; voltage alone is far too coarse. The combination resolves the large majority
+and leaves a small, explicitly listed remainder for review.
 
 ## Related
 

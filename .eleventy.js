@@ -317,6 +317,46 @@ module.exports = function (eleventyConfig) {
 
   // --- Collections ---------------------------------------------------------
   // Top-level section indexes (one segment deep, e.g. /core-energy-gis-data-spatial-fundamentals/)
+  /* FAQPage structured data, derived from the rendered page rather than from
+     frontmatter: any "Frequently asked questions" H2 whose following H3s are the
+     questions gets a matching FAQPage block. Keeps the schema and the visible
+     copy from drifting apart — there is only one source for both. */
+  eleventyConfig.addTransform("faqSchema", function (content, outputPath) {
+    if (!outputPath || !outputPath.endsWith(".html")) return content;
+    const section = content.match(
+      /<h2[^>]*>\s*(?:frequently asked questions|faq)[\s\S]*?(?=<h2|<\/article>|<footer)/i
+    );
+    if (!section) return content;
+    const strip = (html) =>
+      html
+        .replace(/<a class="heading-anchor"[\s\S]*?<\/a>/gi, "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    const items = [];
+    const qre = /<h3[^>]*>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h3|$)/gi;
+    let m;
+    while ((m = qre.exec(section[0])) !== null) {
+      const q = strip(m[1]);
+      const a = strip(m[2]);
+      if (q && a) items.push({ q, a });
+    }
+    if (!items.length) return content;
+    const json = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: items.map((it) => ({
+        "@type": "Question",
+        name: it.q,
+        acceptedAnswer: { "@type": "Answer", text: it.a }
+      }))
+    });
+    return content.replace(
+      "</head>",
+      `<script type="application/ld+json">${json}</script>\n</head>`
+    );
+  });
+
   eleventyConfig.addCollection("sections", function (api) {
     return api
       .getAll()

@@ -12,21 +12,21 @@
       "url": "/core-energy-gis-data-spatial-fundamentals/",
       "icon": "globe",
       "color": "#345B8B",
-      "blurb": "CRS alignment, topology, validation, and ingestion patterns for production energy-GIS pipelines."
+      "blurb": "CRS alignment, ingestion, validation, exclusion screening, and the orchestration that runs it all unattended."
     },
     {
       "label": "Solar & Wind Modeling",
       "url": "/solar-wind-resource-modeling-workflows/",
       "icon": "sun",
       "color": "#F4A261",
-      "blurb": "Irradiance rasters, wind shear, terrain shadow, and temporal aggregation workflows."
+      "blurb": "Irradiance rasters, wind shear, terrain shadow, temporal aggregation, and turbine layout with wake losses."
     },
     {
       "label": "Grid Infrastructure",
       "url": "/grid-infrastructure-network-proximity-analysis/",
       "icon": "grid",
       "color": "#3D8B5F",
-      "blurb": "Transmission mapping, proximity buffers, capacity analysis, and network attribute validation."
+      "blurb": "Transmission mapping, proximity buffers, capacity headroom, attribute validation, and least-cost interconnection routing."
     }
   ]
 }

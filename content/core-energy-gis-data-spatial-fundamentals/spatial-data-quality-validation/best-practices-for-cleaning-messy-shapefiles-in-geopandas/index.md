@@ -25,6 +25,7 @@ Three structural deficiencies compound to produce the symptoms above, and each p
 Addressing these requires ordering the repair correctly — geometry first, then CRS, then attributes — with explicit fallback routing when automated validation fails.
 
 <svg viewBox="0 0 860 280" role="img" aria-label="Cause-to-fix map. Three silent shapefile defects each map to a repair stage and converge on one clean GeoDataFrame. Invalid topology, which raises TopologyException, is fixed by make_valid plus a buffer(0) fallback. CRS ambiguity, which raises CRSError and degree-space area errors, is fixed by set_crs then to_crs to EPSG:5070. Attribute corruption, which truncates and contaminates fields, is fixed by a 10-character truncate and numeric coercion. All three repairs converge on a clean, projected, audited GeoDataFrame." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:860px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="860" height="280"/>
   <title>Three messy-shapefile defects mapped to their repair stages</title>
   <desc>Left column: three warning boxes naming a defect and the error it raises — invalid topology raising TopologyException, CRS ambiguity raising CRSError and degree-space area, and attribute corruption truncating and contaminating fields. Each arrows right into a matching repair stage — make_valid plus buffer(0), set_crs then to_crs EPSG:5070, and a 10-character truncate plus numeric coercion. The three repair stages converge with arrows into a single success node on the right: a clean, projected, audited GeoDataFrame.</desc>
   <defs>
@@ -121,6 +122,7 @@ Running `preflight_shapefile_check` against a raw regulatory layer reports the e
 The corrected routine isolates geometry repair, CRS enforcement, and attribute sanitization into discrete, auditable steps. It is engineered for batch processing of regulatory boundary layers, substation footprints, and land-use constraint datasets, with explicit memory controls and quarantine routing. Geometry is repaired before attributes are touched, EPSG:5070 (NAD83 / Conus Albers, an equal-area frame) is enforced so area-based capacity-density figures are trustworthy, and out-of-bounds or null records are written to dedicated quarantine layers rather than dropped.
 
 <svg viewBox="0 0 700 720" role="img" aria-label="Ordered cleaning pipeline with quarantine branches. A raw shapefile is loaded via pyogrio, then checked for null or empty geometry: matching records are quarantined to null_geometries.shp, the rest pass to make_valid with a buffer(0) fallback, then CRS enforcement to EPSG:5070. A bounds check follows: records outside the expected bounds are quarantined to out_of_bounds.shp, the rest are sanitized with a 10-character truncate and numeric coercion, producing a clean GeoDataFrame." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:700px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="700" height="720"/>
   <title>Deterministic shapefile cleaning pipeline with quarantine routing</title>
   <desc>A top-to-bottom flow down the centre — raw shapefile, load via pyogrio, a null-or-empty-geometry decision, make_valid plus buffer(0) fallback, CRS enforce to EPSG:5070, a within-expected-bounds decision, sanitize attributes (10-character truncate plus numeric coercion), and a clean GeoDataFrame. The null decision branches right on yes to a quarantine box, null_geometries.shp; the bounds decision branches right on no to a quarantine box, out_of_bounds.shp. Repair steps are blue, quarantine boxes are amber, and the final clean output is green.</desc>
   <defs>
@@ -298,6 +300,55 @@ def clean_shapefile_pipeline(
 ## Fallback routing & performance tuning
 
 For national-scale layers, CI/CD runs, and memory-constrained cloud nodes, layer these strategies on top of the core routine:
+
+<svg viewBox="0 0 940 400" role="img" aria-label="The Shapefile format limits that produce most of the defects a cleaning pipeline has to repair, compared against GeoPackage and GeoParquet. A .dbf attribute file caps field names at 10 characters and the file at 2 gigabytes, has no reliable encoding declaration and no null value, and stores dates but not timestamps. GeoPackage and GeoParquet impose none of these, which is why the durable fix is to convert once at ingestion rather than repair repeatedly downstream." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The format limits behind the mess — and the two formats without them</title>
+  <desc>A comparison table with three columns — Shapefile, GeoPackage and GeoParquet — over five rows. Field name length: 10 characters for Shapefile, unlimited for the other two. File size ceiling: 2 gigabytes per component for Shapefile, effectively unlimited otherwise. Text encoding: undeclared and often mis-guessed for Shapefile, UTF-8 for both others. Null handling: no null, so a zero means both zero and missing, versus true nulls. Timestamps: date only for Shapefile, full timestamps for the others.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="fl-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Most “messy shapefile” defects are the format, not the author</text>
+  <text x="396" y="70" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">Shapefile (.shp/.dbf)</text>
+  <text x="608" y="70" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">GeoPackage</text>
+  <text x="820" y="70" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">GeoParquet</text>
+  <text x="28" y="108" text-anchor="start" font-size="11.5" fill="currentColor">Field name length</text>
+  <rect x="300" y="84" width="196" height="38" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="398" y="108" text-anchor="middle" font-size="11" fill="currentColor">10 characters</text>
+  <rect x="512" y="84" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="610" y="108" text-anchor="middle" font-size="11" fill="currentColor">unlimited</text>
+  <rect x="724" y="84" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="822" y="108" text-anchor="middle" font-size="11" fill="currentColor">unlimited</text>
+  <text x="28" y="154" text-anchor="start" font-size="11.5" fill="currentColor">File size ceiling</text>
+  <rect x="300" y="130" width="196" height="38" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="398" y="154" text-anchor="middle" font-size="11" fill="currentColor">2 GB per component</text>
+  <rect x="512" y="130" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="610" y="154" text-anchor="middle" font-size="11" fill="currentColor">effectively none</text>
+  <rect x="724" y="130" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="822" y="154" text-anchor="middle" font-size="11" fill="currentColor">effectively none</text>
+  <text x="28" y="200" text-anchor="start" font-size="11.5" fill="currentColor">Text encoding</text>
+  <rect x="300" y="176" width="196" height="38" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="398" y="200" text-anchor="middle" font-size="11" fill="currentColor">undeclared — guessed</text>
+  <rect x="512" y="176" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="610" y="200" text-anchor="middle" font-size="11" fill="currentColor">UTF-8</text>
+  <rect x="724" y="176" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="822" y="200" text-anchor="middle" font-size="11" fill="currentColor">UTF-8</text>
+  <text x="28" y="246" text-anchor="start" font-size="11.5" fill="currentColor">Null values</text>
+  <rect x="300" y="222" width="196" height="38" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2"/>
+  <text x="398" y="246" text-anchor="middle" font-size="11" fill="currentColor">none — 0 means both</text>
+  <rect x="512" y="222" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="610" y="246" text-anchor="middle" font-size="11" fill="currentColor">true nulls</text>
+  <rect x="724" y="222" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="822" y="246" text-anchor="middle" font-size="11" fill="currentColor">true nulls</text>
+  <text x="28" y="292" text-anchor="start" font-size="11.5" fill="currentColor">Time values</text>
+  <rect x="300" y="268" width="196" height="38" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="398" y="292" text-anchor="middle" font-size="11" fill="currentColor">date only</text>
+  <rect x="512" y="268" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="610" y="292" text-anchor="middle" font-size="11" fill="currentColor">full timestamp</text>
+  <rect x="724" y="268" width="196" height="38" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="822" y="292" text-anchor="middle" font-size="11" fill="currentColor">full timestamp</text>
+  <rect x="28" y="322" width="876" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="466.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">Cleaning a shapefile fixes one delivery. Converting to GeoPackage or GeoParquet at ingestion fixes every</text>
+  <text x="466.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">delivery after it — the truncated field names and the guessed encoding simply stop happening.</text>
+</svg>
 
 - **Prune columns at read time.** Pass `columns=["geometry", "OBJECTID", "CAP_MW"]` to `gpd.read_file()` so the heavy `.dbf` attributes never enter memory before repair — this cuts peak RAM sharply on wide regulatory tables.
 - **Chunk or convert beyond ~500k features.** Topology validation is the memory hot spot; for very large environmental layers, process in batches or stage intermediates as GeoParquet rather than re-reading the shapefile, which also sidesteps the `.dbf` encoding round-trip.

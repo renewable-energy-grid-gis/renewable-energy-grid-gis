@@ -22,6 +22,7 @@ Four compounding causes turn a one-line weighted average into a misleading ranki
 4. **Exclusion zones not hard-masked.** A wetland, a setback buffer, or a protected-area polygon is not a penalty to be outweighed by a great resource — it is a disqualifier. If the exclusion enters the score as one more weighted term, a high-GHI site inside a national park can still rank in the top decile. Exclusions and hard constraints must be a multiplicative 0/1 mask applied *after* the weighted sum.
 
 <svg viewBox="0 0 900 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four suitability-scoring failure modes on the left mapped by arrows to their fixes on the right. Mismatched CRS maps to reprojecting every layer to EPSG:32610. Mixing raster sampling with vector overlay maps to sampling rasters at site points into a single GeoDataFrame. Unnormalized criteria dominating maps to min-max normalizing each criterion to 0 to 1 before weighting. Exclusion zones not hard-masked maps to a multiplicative 0 or 1 hard mask that forces excluded sites to score zero." style="width:100%;max-width:900px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="900" height="470"/>
   <title>Suitability-scoring failure modes mapped to fixes</title>
   <desc>A two-column table. The left column lists four failure modes as dashed boxes; the right column lists the corresponding fix as a solid, lightly filled box; an arrow connects each failure to its fix. Row one: layers in mismatched CRS maps to reproject every layer to EPSG:32610. Row two: raster sampling mixed with vector overlay maps to sample rasters at site points into one GeoDataFrame. Row three: unnormalized criteria dominate maps to min-max normalize each criterion to zero to one before weighting. Row four: exclusion zones not hard-masked maps to a multiplicative zero-or-one hard mask so excluded sites score zero.</desc>
   <defs>
@@ -124,6 +125,46 @@ def preflight_suitability_layers(sites_gdf, ghi_raster_path, slope_raster_path,
 
 The main function assembles every layer in EPSG:32610, samples GHI and slope at each site point, models a relative PV yield from the sampled GHI with pvlib, adds distance-to-grid and the hard exclusion mask, then normalizes and combines into the 0–100 score. The pvlib step is deliberately a *screening-grade* relative index — a temperature-corrected pvwatts estimate per unit capacity — not a bankable hourly run; for that, feed the shortlist into [Solar PV Yield Simulation](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/solar-pv-yield-simulation/) with a full `ModelChain`.
 
+<svg viewBox="0 0 940 400" role="img" aria-label="Why a suitability model applies knock-out criteria before it applies weights. Of 4,820 candidate parcels, 1,640 fail a hard constraint — inside a wetland, slope above 15 percent, or no legal access — and are removed outright. Only the remaining 3,180 are scored on the weighted criteria. Folding the hard constraints into the weighted sum instead lets a parcel with an outstanding irradiance score outrank one that is merely good but actually buildable." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Hard constraints eliminate; weighted criteria rank</title>
+  <desc>A two-stage funnel. Stage one, knock-outs, removes 1,640 of 4,820 candidate parcels: 720 inside a protected wetland, 512 above a 15 percent slope, 408 with no legal access. Stage two scores the surviving 3,180 parcels on four weighted criteria — irradiance at 0.35, distance to interconnection at 0.30, slope at 0.20 and parcel size at 0.15. A callout shows the failure mode of merging the two: a wetland parcel with a top irradiance score outranking a buildable one.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="ko-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">4 820 parcels: eliminate first, then rank what is left</text>
+  <rect x="30" y="70" width="220" height="68" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="140.0" y="94" text-anchor="middle" font-size="11.5" fill="currentColor">candidate parcels</text>
+  <text x="140.0" y="118" text-anchor="middle" font-size="18" fill="currentColor" font-weight="700">4 820</text>
+  <rect x="300" y="72" width="300" height="28" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="450.0" y="92" text-anchor="middle" font-size="11.5" fill="currentColor">inside protected wetland — 720</text>
+  <line x1="256" y1="110" x2="292" y2="90" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ko-arr)"/>
+  <rect x="300" y="122" width="300" height="28" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="450.0" y="142" text-anchor="middle" font-size="11.5" fill="currentColor">slope above 15% — 512</text>
+  <line x1="256" y1="110" x2="292" y2="140" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ko-arr)"/>
+  <rect x="300" y="172" width="300" height="28" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="450.0" y="192" text-anchor="middle" font-size="11.5" fill="currentColor">no legal access — 408</text>
+  <line x1="256" y1="110" x2="292" y2="190" stroke="currentColor" stroke-width="1.1" opacity="0.5" marker-end="url(#ko-arr)"/>
+  <line x1="614" y1="110" x2="650" y2="110" stroke="currentColor" stroke-width="1.4" marker-end="url(#ko-arr)"/>
+  <rect x="660" y="70" width="250" height="68" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="785.0" y="94" text-anchor="middle" font-size="11.5" fill="currentColor">survive the knock-outs</text>
+  <text x="785.0" y="118" text-anchor="middle" font-size="18" fill="currentColor" font-weight="700">3 180</text>
+  <text x="30" y="250" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">weighted criteria, applied only to the survivors</text>
+  <rect x="30" y="262" width="302.0" height="44" rx="5" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="181.0" y="282" text-anchor="middle" font-size="11" fill="currentColor">irradiance (POA)</text>
+  <text x="181.0" y="298" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">weight 0.35</text>
+  <rect x="338.0" y="262" width="258.0" height="44" rx="5" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="467.0" y="282" text-anchor="middle" font-size="11" fill="currentColor">distance to interconnection</text>
+  <text x="467.0" y="298" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">weight 0.30</text>
+  <rect x="602.0" y="262" width="170.0" height="44" rx="5" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="687.0" y="282" text-anchor="middle" font-size="11" fill="currentColor">slope</text>
+  <text x="687.0" y="298" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">weight 0.20</text>
+  <rect x="778.0" y="262" width="126.0" height="44" rx="5" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="841.0" y="282" text-anchor="middle" font-size="11" fill="currentColor">parcel size</text>
+  <text x="841.0" y="298" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">weight 0.15</text>
+  <rect x="30" y="326" width="880" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="470.0" y="347" text-anchor="middle" font-size="11.5" fill="currentColor">Merge the two stages and a wetland parcel with a top irradiance score outranks a buildable one —</text>
+  <text x="470.0" y="364" text-anchor="middle" font-size="11.5" fill="currentColor">the weighted sum has no way to express “this is not permittable at any score”.</text>
+</svg>
+
 ```python
 import numpy as np
 import geopandas as gpd
@@ -218,6 +259,53 @@ Three parameter choices are load-bearing. `sjoin_nearest` can emit duplicate row
 ## Downstream validation
 
 Before the ranked layer is exported to GeoPackage or handed to a mapping portal, gate it with an assertion function suitable for a CI/CD step. It re-checks the invariants that the four failure modes attack — score bounds, the hard mask actually holding, CRS retention, and unique ranks.
+
+<svg viewBox="0 0 940 372" role="img" aria-label="Two of the four criteria improve as the raw value rises and two improve as it falls, so each needs its own normalisation direction. Plane-of-array irradiance and parcel size are normalised ascending: the highest raw value scores 1. Distance to interconnection and slope are normalised descending: the lowest raw value scores 1. Normalising all four the same way — the common bug — rewards the farthest, steepest parcels." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Ascending and descending normalisation, per criterion</title>
+  <desc>Four criteria drawn as small ramps. Plane-of-array irradiance, from 1,450 to 2,100 kilowatt-hours per square metre per year, and parcel size, from 20 to 400 hectares, both ramp upward: the largest raw value scores 1. Distance to interconnection, from 0.4 to 38 kilometres, and slope, from 0 to 15 percent, both ramp downward: the smallest raw value scores 1. A warning notes that applying a single ascending normalisation to all four produces a model that prefers the farthest and steepest parcels.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="372"/>
+  <defs><marker id="nd-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Two criteria improve upward, two improve downward</text>
+  <rect x="40" y="62" width="196" height="158" rx="8" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.5"/>
+  <line x1="64" y1="194" x2="212" y2="194" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <line x1="64" y1="194" x2="64" y2="88" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M64,194 L212,88" fill="none" stroke="#3D8B5F" stroke-width="2.6"/>
+  <text x="54" y="94" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">1</text>
+  <text x="54" y="198" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">0</text>
+  <text x="138" y="244" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">POA irradiance</text>
+  <text x="138" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1 450 → 2 100 kWh/m²·yr</text>
+  <text x="138" y="284" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">ascending</text>
+  <rect x="266" y="62" width="196" height="158" rx="8" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.5"/>
+  <line x1="290" y1="194" x2="438" y2="194" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <line x1="290" y1="194" x2="290" y2="88" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M290,194 L438,88" fill="none" stroke="#3D8B5F" stroke-width="2.6"/>
+  <text x="280" y="94" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">1</text>
+  <text x="280" y="198" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">0</text>
+  <text x="364" y="244" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">parcel size</text>
+  <text x="364" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">20 → 400 ha</text>
+  <text x="364" y="284" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">ascending</text>
+  <rect x="492" y="62" width="196" height="158" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="516" y1="194" x2="664" y2="194" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <line x1="516" y1="194" x2="516" y2="88" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M516,88 L664,194" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <text x="506" y="94" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">1</text>
+  <text x="506" y="198" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">0</text>
+  <text x="590" y="244" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">distance to POI</text>
+  <text x="590" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">0.4 → 38 km</text>
+  <text x="590" y="284" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">descending</text>
+  <rect x="718" y="62" width="196" height="158" rx="8" fill="none" stroke="#5BA8C8" stroke-width="1.1" opacity="0.5"/>
+  <line x1="742" y1="194" x2="890" y2="194" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <line x1="742" y1="194" x2="742" y2="88" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <path d="M742,88 L890,194" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <text x="732" y="94" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">1</text>
+  <text x="732" y="198" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.8">0</text>
+  <text x="816" y="244" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">slope</text>
+  <text x="816" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">0 → 15%</text>
+  <text x="816" y="284" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">descending</text>
+  <rect x="40" y="306" width="868" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="474.0" y="327" text-anchor="middle" font-size="11.5" fill="currentColor">One ascending normalisation for all four is the common bug: it produces a model that prefers the</text>
+  <text x="474.0" y="344" text-anchor="middle" font-size="11.5" fill="currentColor">farthest, steepest parcels and still returns a perfectly plausible ranked list.</text>
+</svg>
 
 ```python
 def assert_suitability_output(ranked, target_epsg=32610):

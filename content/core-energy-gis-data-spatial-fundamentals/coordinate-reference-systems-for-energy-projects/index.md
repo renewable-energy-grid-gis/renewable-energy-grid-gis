@@ -27,6 +27,7 @@ At $\varphi = 45^\circ\text{N}$ that is a factor of two: a solar array footprint
 The third, subtlest trap is the datum shift. Reprojecting NAD27 or NAD83 data to WGS84 by simply re-labelling the CRS — without applying a NTv2 or NADCON grid — leaves features tens of metres off true position. At construction-staking and parcel-boundary tolerances, that is the difference between a compliant setback and a violation.
 
 <svg viewBox="0 0 800 408" role="img" aria-label="CRS failure path versus corrective contract. Three source layers in different coordinate systems — an EPSG:4326 reanalysis grid, an EPSG:3857 orthomosaic, and NAD83 parcels — are overlaid without an explicit transform, producing three silent errors: degree-based distance, secant-squared area inflation, and an unhandled datum shift. The corrective path instead routes every layer through an explicit CRS tag, a datum-correct transform, a metric UTM target, and a unit-aware assertion." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:800px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="800" height="408"/>
   <title>How CRS drift produces silent errors, and the corrective contract that prevents them</title>
   <desc>Top: three source layers in different coordinate reference systems converge on a single unprojected overlay node, which branches to three failure boxes — degree-based distance (a 5 km buffer treated as 5000 degrees), secant-squared area inflation (roughly double at 45 degrees north), and an unhandled datum shift (features tens of metres off). Bottom: a corrective chain runs explicit CRS tag, then datum-correct transform, then metric UTM target, then unit-aware assertion.</desc>
   <defs>
@@ -85,19 +86,19 @@ The third, subtlest trap is the datum shift. Reprojecting NAD27 or NAD83 data to
   <!-- Corrective chain (success) -->
   <g font-size="13" text-anchor="middle" fill="#1F3A60">
     <rect x="16" y="308" width="177" height="64" rx="8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
-    <circle cx="40" cy="308" r="11" fill="#3D8B5F"/><text x="40" y="312" fill="#ffffff" font-weight="700">1</text>
+    <circle cx="40" cy="308" r="11" fill="#2E7048"/><text x="40" y="312" fill="#ffffff" font-weight="700">1</text>
     <text x="104" y="338">Explicit</text>
     <text x="104" y="356">CRS tag</text>
     <rect x="213" y="308" width="177" height="64" rx="8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
-    <circle cx="237" cy="308" r="11" fill="#3D8B5F"/><text x="237" y="312" fill="#ffffff" font-weight="700">2</text>
+    <circle cx="237" cy="308" r="11" fill="#2E7048"/><text x="237" y="312" fill="#ffffff" font-weight="700">2</text>
     <text x="301" y="338">Datum-correct</text>
     <text x="301" y="356">transform</text>
     <rect x="410" y="308" width="177" height="64" rx="8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
-    <circle cx="434" cy="308" r="11" fill="#3D8B5F"/><text x="434" y="312" fill="#ffffff" font-weight="700">3</text>
+    <circle cx="434" cy="308" r="11" fill="#2E7048"/><text x="434" y="312" fill="#ffffff" font-weight="700">3</text>
     <text x="498" y="338">Metric UTM</text>
     <text x="498" y="356">target</text>
     <rect x="607" y="308" width="177" height="64" rx="8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
-    <circle cx="631" cy="308" r="11" fill="#3D8B5F"/><text x="631" y="312" fill="#ffffff" font-weight="700">4</text>
+    <circle cx="631" cy="308" r="11" fill="#2E7048"/><text x="631" y="312" fill="#ffffff" font-weight="700">4</text>
     <text x="695" y="338">Unit-aware</text>
     <text x="695" y="356">assertion</text>
   </g>
@@ -300,6 +301,46 @@ def assert_equal_area_for_metrics(gdf: gpd.GeoDataFrame) -> None:
 
 The chunk size is the primary memory dial. For multi-gigabyte cadastral layers, `25,000–50,000` features per chunk typically balances per-read I/O overhead against heap stability; smaller chunks lower the memory ceiling at the cost of more `pyogrio` round-trips. Because reads are dispatched to a thread executor, disk and network latency overlap with CPU-bound geometry repair and reprojection rather than serializing behind it — the practical win on object-store-backed sources where each `read_file` carries hundreds of milliseconds of latency.
 
+<svg viewBox="0 0 920 440" role="img" aria-label="How chunk size trades peak memory against reprojection throughput on a national cadastral layer. At 5,000 features per chunk peak memory is 0.4 gigabytes and throughput 38,000 features per second; at 25,000 it is 1.6 gigabytes and 62,000 per second; at 50,000 it is 3.1 gigabytes and 68,000 per second; at 100,000 it is 6.2 gigabytes for only 70,000 per second. Throughput flattens well before memory does, which is why the 25,000 to 50,000 band is the working range." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Chunk size sets peak memory linearly but buys throughput only up to a point</title>
+  <desc>A paired chart over four chunk sizes — 5,000, 25,000, 50,000 and 100,000 features. Peak memory rises almost linearly from 0.4 to 6.2 gigabytes, while throughput rises steeply from 38,000 to 62,000 features per second between the first two sizes and then flattens to 68,000 and 70,000. A shaded band marks 25,000 to 50,000 features as the recommended range, where throughput is within 3 percent of its ceiling at a fraction of the memory.</desc>
+  <rect class="svg-bg" x="0" y="0" width="920" height="440"/>
+  <defs><marker id="ck-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Chunk size: memory is linear, throughput is not</text>
+  <line x1="110" y1="268" x2="800" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="110" y1="68" x2="110" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="282.5" y="68" width="345.0" height="200" rx="6" fill="#DDF0E2" opacity="0.55"/>
+  <text x="455.0" y="84" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">recommended band</text>
+  <rect x="144.25" y="256.9142857142857" width="44" height="11.085714285714287" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <rect x="204.25" y="175.85000000000002" width="44" height="92.14999999999999" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="166.25" y="248.9142857142857" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">0.4 GB</text>
+  <text x="226.25" y="167.85000000000002" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">38k/s</text>
+  <text x="196.25" y="288" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">5 000 features</text>
+  <rect x="316.75" y="223.65714285714284" width="44" height="44.34285714285715" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <rect x="376.75" y="117.65" width="44" height="150.35" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="338.75" y="215.65714285714284" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">1.6 GB</text>
+  <text x="398.75" y="109.65" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">62k/s</text>
+  <text x="368.75" y="288" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">25 000 features</text>
+  <rect x="489.25" y="182.0857142857143" width="44" height="85.91428571428573" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <rect x="549.25" y="103.1" width="44" height="164.9" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="511.25" y="174.0857142857143" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">3.1 GB</text>
+  <text x="571.25" y="95.1" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">68k/s</text>
+  <text x="541.25" y="288" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">50 000 features</text>
+  <rect x="661.75" y="96.17142857142855" width="44" height="171.82857142857145" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <rect x="721.75" y="98.25" width="44" height="169.75" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="683.75" y="88.17142857142855" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">6.2 GB</text>
+  <text x="743.75" y="90.25" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">70k/s</text>
+  <text x="713.75" y="288" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">100 000 features</text>
+  <text x="110" y="312" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">chunk size</text>
+  <rect x="596" y="340" width="18" height="12" rx="2" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="622" y="351" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">peak resident memory</text>
+  <rect x="596" y="362" width="18" height="12" rx="2" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="622" y="373" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">throughput, features per second</text>
+  <rect x="20" y="336" width="548" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="294.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor">Past 50 000 features the curve buys 3% more throughput for twice the RAM;</text>
+  <text x="294.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">below 25 000 the per-read overhead starts to dominate the transform itself.</text>
+</svg>
+
 The cached `pyproj.Transformer` is the second lever. Re-parsing a CRS string per feature is a measurable cost at national scale; building the transformer once in `__init__` and reusing it removes that overhead, and the object is safe to share across the executor threads. When a subsequent stage needs nearest-asset distances against this reprojected output — for example feeding [grid proximity and distance calculations](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/proximity-distance-calculations/) — build a spatial index (`gdf.sindex`) once on the projected frame rather than recomputing geometry relationships per query. Keeping the whole portfolio in a single consistent UTM zone is what lets that index, and the [grid capacity buffer analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/) that consumes it, operate in true metres without per-query reprojection.
 
 For datasets that exceed even chunked single-machine limits, the same `_validate_and_transform` contract drops into a `dask-geopandas` partition map: each partition is reprojected independently because the transformation is row-local, so the operation parallelizes cleanly with no cross-partition shuffle.
@@ -307,6 +348,46 @@ For datasets that exceed even chunked single-machine limits, the same `_validate
 ## Validation & audit trail
 
 A transformation is only defensible if it is logged. Energy submissions — interconnection studies, environmental impact reports, construction-staking packages — can be rejected when spatial operations lack documented CRS lineage. Every run should emit, per layer, an immutable record of:
+
+<svg viewBox="0 0 940 404" role="img" aria-label="The seven fields a defensible reprojection writes to its audit record, and where each one comes from: source EPSG and datum from the input file metadata, target EPSG from the analysis contract, the pyproj and PROJ database versions from the runtime, the transformation pipeline string from the Transformer itself, and the feature count and quarantine count from the run. Together they let an independent engineer reproduce the exact coordinates." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>What a reproducible reprojection writes down</title>
+  <desc>A three-column diagram. On the left, three sources: the input layer metadata, the analysis contract, and the runtime environment. In the middle, a record card listing seven logged fields — source EPSG, source datum, target EPSG, pyproj version, PROJ database version, the transformation pipeline string, and the feature and quarantine counts. On the right, the two things the record makes possible: an independent engineer reproducing the coordinates byte for byte, and a regulator tracing a reported area back to the frame it was measured in.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="404"/>
+  <defs><marker id="pv-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">A transformation is only defensible if the run wrote down how it was made</text>
+  <rect x="20" y="60" width="250" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="145.0" y="81" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Input layer metadata</text>
+  <text x="145.0" y="98" text-anchor="middle" font-size="11" fill="currentColor">.prj · GeoPackage CRS</text>
+  <line x1="272" y1="90" x2="316" y2="90" stroke="currentColor" stroke-width="1.4" marker-end="url(#pv-arr)"/>
+  <rect x="20" y="158" width="250" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="145.0" y="179" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Analysis contract</text>
+  <text x="145.0" y="196" text-anchor="middle" font-size="11" fill="currentColor">the frame the task requires</text>
+  <line x1="272" y1="188" x2="316" y2="188" stroke="currentColor" stroke-width="1.4" marker-end="url(#pv-arr)"/>
+  <rect x="20" y="256" width="250" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="145.0" y="277" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Runtime environment</text>
+  <text x="145.0" y="294" text-anchor="middle" font-size="11" fill="currentColor">pinned wheels in the image</text>
+  <line x1="272" y1="286" x2="316" y2="286" stroke="currentColor" stroke-width="1.4" marker-end="url(#pv-arr)"/>
+  <rect x="320" y="54" width="320" height="250" rx="9" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="480" y="78" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">crs_audit record</text>
+  <text x="480" y="106" text-anchor="middle" font-size="11.5" fill="currentColor">source_epsg · source_datum</text>
+  <text x="480" y="128" text-anchor="middle" font-size="11.5" fill="currentColor">target_epsg</text>
+  <text x="480" y="150" text-anchor="middle" font-size="11.5" fill="currentColor">pyproj / PROJ db version</text>
+  <text x="480" y="172" text-anchor="middle" font-size="11.5" fill="currentColor">transformation pipeline string</text>
+  <text x="480" y="194" text-anchor="middle" font-size="11.5" fill="currentColor">features_in · features_quarantined</text>
+  <text x="480" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">written next to the output layer</text>
+  <text x="480" y="252" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">as JSON, one line per run</text>
+  <text x="480" y="284" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">never overwritten in place</text>
+  <line x1="644" y1="130" x2="688" y2="130" stroke="currentColor" stroke-width="1.4" marker-end="url(#pv-arr)"/>
+  <line x1="644" y1="226" x2="688" y2="226" stroke="currentColor" stroke-width="1.4" marker-end="url(#pv-arr)"/>
+  <rect x="692" y="100" width="228" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="806.0" y="121" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Byte-identical rerun</text>
+  <text x="806.0" y="138" text-anchor="middle" font-size="11" fill="currentColor">same points, six months on</text>
+  <rect x="692" y="196" width="228" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="806.0" y="217" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Traceable submission</text>
+  <text x="806.0" y="234" text-anchor="middle" font-size="11" fill="currentColor">area back to its frame</text>
+  <rect x="20" y="344" width="900" height="30" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="470.0" y="365" text-anchor="middle" font-size="11.5" fill="currentColor">Interconnection studies and impact reports are rejected for undocumented spatial operations far more often than for wrong ones.</text>
+</svg>
 
 1. Source CRS and EPSG code, plus geographic-vs-projected and linear unit.
 2. Transformation method actually applied (`helmert`, `gridshift`, NTv2/NADCON grid name).
@@ -333,6 +414,48 @@ def audit_record(src: gpd.GeoDataFrame, out: gpd.GeoDataFrame,
 ```
 
 In CI/CD, gate the pipeline on these assertions: a `target_unit` of `degree`, a missing datum-shift method on a cross-datum hop, or an unexplained jump in bounding-box extent each signals a regression that must block release rather than ship into a permitting submission. The same lineage record threads into jurisdictional checks during [regulatory boundary mapping](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/regulatory-boundary-mapping/), where setback and conservation-zone geometries must be proven to share the project's coordinate frame. By embedding explicit CRS validation, memory-aware chunking, async I/O coordination, and an immutable transformation log into the geospatial ETL architecture, energy teams eliminate projection-induced financial risk and carry an audit trail from siting through commissioning.
+
+
+## Frequently asked questions
+
+### Is `estimate_utm_crs()` safe to use in production?
+
+It is safe as a default and unsafe as an unchecked one. The method returns the UTM zone containing
+the centroid of the layer's extent, which is correct for a compact project and wrong for anything
+that straddles a zone boundary — precisely the case that produces seam drift. Use it to propose a
+frame, then assert that the extent fits inside that zone before accepting the proposal, and route
+multi-zone extents to a custom conic instead.
+
+### What is the difference between a datum shift and a reprojection?
+
+A reprojection changes the map projection while keeping the datum; a datum shift changes the
+reference ellipsoid and its realisation, and moves the coordinates on the ground. Relabelling NAD27
+data as WGS 84 is the classic silent failure: nothing raises, and features land tens of metres from
+where they belong. Let `pyproj` select a transformation pipeline rather than overwriting the CRS
+label, and record the pipeline string it chose in the audit record.
+
+### How do I know whether a layer's CRS is declared or guessed?
+
+`gdf.crs is None` distinguishes undeclared from declared, but a declared CRS can still be wrong. The
+practical check is a magnitude test: geographic coordinates fall within ±180 and ±90, Web Mercator
+values are in the millions of metres, and a UTM easting sits between roughly 100,000 and 900,000. A
+layer whose declared frame disagrees with the magnitude of its own coordinates is mislabelled, and
+that check costs one pass over the bounding box.
+
+### Does `always_xy=True` matter if I only use GeoPandas?
+
+Not for GeoPandas itself, which already normalises to longitude-latitude order, but it matters the
+moment a raw `pyproj.Transformer` appears anywhere in the pipeline — and one always does eventually.
+`EPSG:4326` is formally defined as latitude first, so a transformer built without `always_xy=True`
+silently swaps the axes relative to every GeoPandas call around it. Setting it everywhere costs
+nothing and removes a defect class that is very hard to see in a result.
+
+### How often should the PROJ database be pinned or updated?
+
+Pin it, and update it deliberately with a fixture test in the way. Datum realisations change — the
+move toward NATRF2022 is the live example — and a PROJ upgrade can change which transformation
+pipeline is selected for the same pair of codes. The shift is usually centimetres, which is
+invisible in a map and material in a construction-staking package.
 
 ## Related
 

@@ -27,6 +27,7 @@ $$\bar{G}_{\text{month}} = \frac{\sum_{i=1}^{N} G_i \,\Delta t}{N \,\Delta t} = 
 The subtlety is not the formula — it is that $N$ must count *valid* hours only, and months below a coverage threshold must be masked rather than reported.
 
 <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three independent resampling failures and their fixes converging on a single CF-compliant monthly output: timezone drift fixed by tz_localize then tz_convert, unbounded memory fixed by Dask chunking, and physics violation fixed by summing energy over valid hours with a coverage mask" style="width:100%;max-width:880px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="880" height="360"/>
   <title>Three Resampling Failure Modes Mapped to Their Fixes</title>
   <desc>A three-row diagram. Each left-column failure box maps by an arrow to a middle-column fix box, and all three fixes converge through a vertical bus into one right-hand output box. Row one: timezone and calendar drift (a UTC index resampled to a local month-end window shifts every month by five to eight hours) is fixed by tz_localize then tz_convert before any resample. Row two: unbounded memory (a ten-year one-kilometre stack over fifty gigabytes triggers an out-of-memory kill, signal nine) is fixed by Dask chunks of time 720 and x equals y equals 256. Row three: physics violation (an arithmetic mean over twenty-four hours lets night-time zeros dilute the capacity factor) is fixed by summing energy and dividing by valid hours plus a ninety percent coverage mask. The converged output is a CF-compliant monthly NetCDF that is energy-conserving and gated.</desc>
   <defs>
@@ -133,6 +134,34 @@ A clean pre-flight pass guarantees the fix below runs deterministically. Treat a
 
 The corrected pipeline uses `xarray` and `dask` with explicit timezone normalization, lazy evaluation, and energy-conserving aggregation. Every parameter is chosen for energy-GIS use: `float32` keeps the stack within a workstation RAM budget, `time=720` aligns chunk boundaries with ~30-day months to minimise cross-chunk reduction, and a 90% coverage mask suppresses months that would otherwise report a biased mean.
 
+<svg viewBox="0 0 940 392" role="img" aria-label="Whether a monthly reduction should take a mean or a sum is decided by the unit, not by preference. Irradiance in watts per square metre is a rate, so its monthly figure is a mean — summing it produces a number with no physical meaning. Energy in kilowatt-hours is already a quantity, so its monthly figure is a sum. Applying the wrong one to a June series gives 5,652,000 where the answer is 235.5, and both look like numbers." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The unit decides the aggregator</title>
+  <desc>A two-by-two comparison. For irradiance in watts per square metre, a rate, the correct monthly reduction is a mean, giving 261 watts per square metre; the incorrect sum gives 187,920 with no meaning. For energy in kilowatt-hours per square metre, a quantity, the correct reduction is a sum, giving 235.5 kilowatt-hours per square metre for the month; the incorrect mean gives 0.327, which is an hourly average dressed as a monthly total. Each cell is marked correct or meaningless.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="ag-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Rates are averaged; quantities are summed</text>
+  <text x="60" y="104" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">irradiance · W/m²</text>
+  <text x="60" y="124" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">a rate</text>
+  <rect x="300" y="70" width="290" height="84" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="445" y="108" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">mean = 261 W/m²</text>
+  <text x="445" y="130" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">correct</text>
+  <rect x="614" y="70" width="294" height="84" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="761" y="108" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">sum = 187 920</text>
+  <text x="761" y="130" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">meaningless</text>
+  <text x="60" y="212" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">energy · kWh/m²</text>
+  <text x="60" y="232" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">a quantity</text>
+  <rect x="300" y="178" width="290" height="84" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="445" y="216" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">sum = 235.5 kWh/m²</text>
+  <text x="445" y="238" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">correct</text>
+  <rect x="614" y="178" width="294" height="84" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="761" y="216" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">mean = 0.327</text>
+  <text x="761" y="238" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">meaningless</text>
+  <text x="60" y="300" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">June, hourly series, 720 records</text>
+  <rect x="60" y="314" width="848" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="484.0" y="335" text-anchor="middle" font-size="11.5" fill="currentColor">The wrong aggregator does not raise, does not warn, and produces a column of plausible magnitudes —</text>
+  <text x="484.0" y="352" text-anchor="middle" font-size="11.5" fill="currentColor">so the check belongs in the schema: assert the unit, then dispatch the aggregator from it.</text>
+</svg>
+
 ```python
 import xarray as xr
 import pandas as pd
@@ -202,6 +231,60 @@ For continental-scale stacks or CI/CD runners with constrained RAM, layer in the
 ## Downstream validation
 
 Gate the output before it reaches a yield model. This audit asserts temporal monotonicity, CRS persistence, dtype, and physical bounds (`0 ≤ GHI ≤ 1400 W·m⁻²`), and is cheap enough to run as a CI/CD step on every produced artifact.
+
+<svg viewBox="0 0 940 388" role="img" aria-label="A monthly mean says nothing about how much of the month it saw. In this year, March is complete at 744 of 744 hours, June is missing a maintenance window and holds 71 percent, and September holds 96 percent. The June mean is computed without complaint and is 0.42 kilowatt-hours per square metre per day higher than the full-month figure, because the missing window fell on overcast days. Every monthly reduction should carry its coverage fraction." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Coverage fraction belongs beside every monthly figure</title>
+  <desc>A twelve-month chart showing, for each month, the fraction of expected hours actually present: most months are at or near 100 percent, June is at 71 percent and September at 96 percent. A threshold line marks 90 percent as the minimum coverage for a reportable monthly figure. Beside it, the June comparison: the mean computed from the 71 percent of hours present is 7.84 kilowatt-hours per square metre per day, while the full-month figure reconstructed from a neighbouring station is 7.42 — the gap arises because the missing hours were overcast.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="388"/>
+  <defs><marker id="cv-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Coverage, not just the mean</text>
+  <rect x="60" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="83.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="83.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">J</text>
+  <rect x="114" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="137.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="137.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">F</text>
+  <rect x="168" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="191.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="191.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">M</text>
+  <rect x="222" y="85.6" width="46" height="158.4" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="245.0" y="77.6" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">99</text>
+  <text x="245.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">A</text>
+  <rect x="276" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="299.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="299.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">M</text>
+  <rect x="330" y="130.39999999999998" width="46" height="113.60000000000001" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="353.0" y="122.39999999999998" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">71</text>
+  <text x="353.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">J</text>
+  <rect x="384" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="407.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="407.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">J</text>
+  <rect x="438" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="461.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="461.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">A</text>
+  <rect x="492" y="90.4" width="46" height="153.6" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="515.0" y="82.4" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">96</text>
+  <text x="515.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">S</text>
+  <rect x="546" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="569.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="569.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">O</text>
+  <rect x="600" y="84.0" width="46" height="160.0" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="623.0" y="76.0" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">100</text>
+  <text x="623.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">N</text>
+  <rect x="654" y="87.19999999999999" width="46" height="156.8" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="677.0" y="79.19999999999999" text-anchor="middle" font-size="10" fill="currentColor" font-weight="700">98</text>
+  <text x="677.0" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">D</text>
+  <line x1="50" y1="100.0" x2="708" y2="100.0" stroke="#F4A261" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="714" y="104.0" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">90% floor</text>
+  <text x="60" y="60" text-anchor="start" font-size="11" fill="currentColor" opacity="0.8">% of expected hours present</text>
+  <rect x="60" y="272" width="412" height="50" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="266.0" y="293" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">June mean from the 71% present</text>
+  <text x="266.0" y="311" text-anchor="middle" font-size="12.5" fill="currentColor">7.84 kWh/m²·day</text>
+  <rect x="496" y="272" width="412" height="50" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="702.0" y="293" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">full-month figure once reconstructed</text>
+  <text x="702.0" y="311" text-anchor="middle" font-size="12.5" fill="currentColor">7.42 kWh/m²·day</text>
+  <text x="60" y="366" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">The missing window fell on overcast days, so the gap is bias, not noise.</text>
+</svg>
 
 ```python
 import xarray as xr

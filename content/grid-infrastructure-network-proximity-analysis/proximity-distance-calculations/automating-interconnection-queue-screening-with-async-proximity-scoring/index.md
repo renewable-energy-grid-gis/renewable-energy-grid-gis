@@ -28,12 +28,13 @@ Four compounding causes turn a working demo into a broken batch, and each maps t
 4. **Ordering scrambled on gather.** `asyncio.gather` preserves the order of the *tasks* you pass it, but the moment you build tasks from a filtered subset, sort mid-stream, or key results by completion order, routed distances land against the wrong `site_id`. The join back to the portfolio must be by explicit key, never by position.
 
 <svg viewBox="0 0 960 470" role="img" aria-label="Four root causes of a broken async interconnection screen mapped to their fixes. Unbounded gather exhausting sockets maps to a Semaphore-bounded dispatch. No timeout or retry maps to a per-request ClientTimeout with bounded exponential backoff. Blocking geopandas in the event loop maps to running the spatial prescreen before the loop and offloading any in-loop CPU work to an executor. Scrambled ordering maps to keying every routed result by site_id and joining back by that key. All four fixes converge on a ranked, order-safe feasibility table." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="960" height="470"/>
   <title>Async queue-screening failure causes mapped to their fixes</title>
   <desc>Left column lists four failure causes as warning nodes: unbounded gather exhausting sockets, no timeout or retry, blocking geopandas in the event loop, and scrambled result ordering. Each maps rightward to a neutral fix node: Semaphore-bounded dispatch, per-request ClientTimeout with bounded retry backoff, spatial prescreen run before the loop with CPU work offloaded to an executor, and results keyed by site_id joined back by key. All four fixes feed a single success node: a ranked, order-safe feasibility table.</desc>
   <defs>
     <style>
       .cause { fill:#FFE3BE; stroke:#F4A261; stroke-width:1.5; }
-      .fix   { fill:#DCEEF6; stroke:#5BA8C8; stroke-width:1.5; }
+      .stage { fill:#DCEEF6; stroke:#5BA8C8; stroke-width:1.5; }
       .good  { fill:#DDF0E2; stroke:#3D8B5F; stroke-width:1.5; }
       .lbl   { fill:currentColor; text-anchor:middle; }
       .edge  { stroke:currentColor; stroke-width:1.5; fill:none; opacity:0.85; }
@@ -55,10 +56,10 @@ Four compounding causes turn a working demo into a broken batch, and each maps t
     <text x="170" y="358">Scrambled result</text><text x="170" y="376">ordering</text>
   </g>
   <!-- fixes -->
-  <rect class="fix" x="470" y="48"  width="300" height="66" rx="9"/>
-  <rect class="fix" x="470" y="142" width="300" height="66" rx="9"/>
-  <rect class="fix" x="470" y="236" width="300" height="66" rx="9"/>
-  <rect class="fix" x="470" y="330" width="300" height="66" rx="9"/>
+  <rect class="stage" x="470" y="48"  width="300" height="66" rx="9"/>
+  <rect class="stage" x="470" y="142" width="300" height="66" rx="9"/>
+  <rect class="stage" x="470" y="236" width="300" height="66" rx="9"/>
+  <rect class="stage" x="470" y="330" width="300" height="66" rx="9"/>
   <g class="lbl" font-size="12.5">
     <text x="620" y="76">Semaphore-bounded</text><text x="620" y="94">dispatch</text>
     <text x="620" y="170">ClientTimeout +</text><text x="620" y="188">bounded retry backoff</text>
@@ -215,6 +216,56 @@ async def resolve_obstructed_distances(
 
 A distance alone does not rank an interconnection queue; a site 3 km from a saturated feeder is worse than one 6 km from a feeder with spare thermal capacity. Merge the routed and straight-line distances into a single `interconnection_m` column, join the [thermal headroom for interconnection screening](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/modeling-thermal-headroom-for-interconnection-screening/) already attached from the nearest asset, and compute a weighted feasibility score
 
+<svg viewBox="0 0 940 400" role="img" aria-label="How one queue application becomes a rank. Four normalised components are weighted: routed distance at 0.40, available headroom at 0.30, voltage-class fit at 0.20 and land-control status at 0.10. For the worked application the component scores are 0.72, 0.55, 1.00 and 0.40, giving a composite of 0.693. The distance component dominates by design — it is the one that maps directly to capital cost." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Turning four normalised components into one ranking score</title>
+  <desc>A worked scoring example for a single interconnection queue application. Four rows give the component, its raw value, the normalised score and the weight: routed distance 11.4 kilometres normalises to 0.72 at weight 0.40; available headroom 24 megawatts normalises to 0.55 at weight 0.30; voltage-class fit is an exact match scoring 1.00 at weight 0.20; land control is an option rather than a lease, scoring 0.40 at weight 0.10. The weighted contributions are 0.288, 0.165, 0.200 and 0.040, summing to a composite score of 0.693.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="rk-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One application, four components, one comparable number</text>
+  <text x="60" y="72" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">component</text>
+  <text x="300" y="72" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">raw value</text>
+  <text x="452" y="72" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">normalised</text>
+  <text x="560" y="72" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">weight</text>
+  <text x="700" y="72" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">contribution</text>
+  <rect x="40" y="84" width="868" height="44" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="112" text-anchor="start" font-size="12" fill="currentColor">routed distance</text>
+  <text x="300" y="112" text-anchor="start" font-size="11.5" fill="currentColor">11.4 km</text>
+  <text x="452" y="112" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.72</text>
+  <text x="560" y="112" text-anchor="middle" font-size="12" fill="currentColor">0.40</text>
+  <text x="700" y="112" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.288</text>
+  <rect x="770" y="98" width="120" height="16" rx="3" fill="none" stroke="#5BA8C8" stroke-width="1"/>
+  <rect x="770" y="98" width="86.39999999999998" height="16" rx="3" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="136" width="868" height="44" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="164" text-anchor="start" font-size="12" fill="currentColor">available headroom</text>
+  <text x="300" y="164" text-anchor="start" font-size="11.5" fill="currentColor">24 MW</text>
+  <text x="452" y="164" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.55</text>
+  <text x="560" y="164" text-anchor="middle" font-size="12" fill="currentColor">0.30</text>
+  <text x="700" y="164" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.165</text>
+  <rect x="770" y="150" width="120" height="16" rx="3" fill="none" stroke="#5BA8C8" stroke-width="1"/>
+  <rect x="770" y="150" width="49.5" height="16" rx="3" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="188" width="868" height="44" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="216" text-anchor="start" font-size="12" fill="currentColor">voltage-class fit</text>
+  <text x="300" y="216" text-anchor="start" font-size="11.5" fill="currentColor">exact match</text>
+  <text x="452" y="216" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">1.00</text>
+  <text x="560" y="216" text-anchor="middle" font-size="12" fill="currentColor">0.20</text>
+  <text x="700" y="216" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.200</text>
+  <rect x="770" y="202" width="120" height="16" rx="3" fill="none" stroke="#3D8B5F" stroke-width="1"/>
+  <rect x="770" y="202" width="60.0" height="16" rx="3" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1" opacity="0.5"/>
+  <rect x="40" y="240" width="868" height="44" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="268" text-anchor="start" font-size="12" fill="currentColor">land control</text>
+  <text x="300" y="268" text-anchor="start" font-size="11.5" fill="currentColor">option, not lease</text>
+  <text x="452" y="268" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.40</text>
+  <text x="560" y="268" text-anchor="middle" font-size="12" fill="currentColor">0.10</text>
+  <text x="700" y="268" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.040</text>
+  <rect x="770" y="254" width="120" height="16" rx="3" fill="none" stroke="#F4A261" stroke-width="1"/>
+  <rect x="770" y="254" width="12.000000000000002" height="16" rx="3" fill="#F4A261" stroke="#F4A261" stroke-width="1" opacity="0.5"/>
+  <text x="560" y="320" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">composite</text>
+  <text x="700" y="320" text-anchor="middle" font-size="13.5" fill="#1F5C3A" font-weight="700">0.693</text>
+  <rect x="40" y="336" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="357" text-anchor="middle" font-size="11.5" fill="currentColor">Distance carries the heaviest weight because it is the component that converts directly into capital cost;</text>
+  <text x="474.0" y="374" text-anchor="middle" font-size="11.5" fill="currentColor">the weights are configuration, and every published ranking should record the set that produced it.</text>
+</svg>
+
 $$ S_i = w_d\left(1 - \frac{d_i}{d_{\max}}\right) + w_h\,\frac{H_i}{H_{\max}}\,, $$
 
 where $d_i$ is the interconnection distance, $H_i$ the available headroom in MW, and $w_d + w_h = 1$. The rank is stable and every input row survives — no filter drops a site without recording why.
@@ -259,6 +310,57 @@ Export the result as GeoParquet or CSV; the `audit_timestamp`, the weights, and 
 - **Offload any unavoidable in-loop CPU work.** If a leg needs an on-the-fly cost-surface solve, wrap it in `loop.run_in_executor(None, solve_fn)` so the GEOS/NumPy call never blocks the event loop mid-batch.
 - **Prescreen aggressively.** Widen the barrier test only where terrain genuinely obstructs; every leg you keep as straight-line is one the router never has to serve.
 - **Snapshot partial results.** Persist the routed `dict` to disk as it fills so a mid-run endpoint outage resumes from the last completed leg instead of re-routing the whole obstructed subset.
+
+<svg viewBox="0 0 940 400" role="img" aria-label="Wall-clock time to route 3,400 obstructed legs against an external routing service as concurrency rises. Sequentially it takes 41 minutes; at 8 concurrent requests 6.1 minutes; at 32 it is 2.4 minutes; at 128 it climbs back to 3.6 minutes because the service begins returning 429s and the client spends its time backing off. The knee is near 32, which is where the semaphore should be set." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Concurrency helps until the far end starts refusing</title>
+  <desc>A line chart of wall-clock minutes against concurrency for 3,400 routing calls. Sequential execution takes 41 minutes. Eight concurrent requests take 6.1 minutes, sixteen take 3.4, thirty-two take 2.4, sixty-four take 2.6 and one hundred and twenty eight take 3.6 as rate limiting sets in. The minimum at thirty-two is marked as the knee, and a shaded region beyond sixty-four is labelled as the range where retries dominate.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="cc-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">3 400 obstructed legs, routed against a rate-limited service</text>
+  <line x1="100" y1="282" x2="860" y2="282" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="100" y1="68" x2="100" y2="282" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="751.4285714285714" y="68" width="108.57142857142856" height="214" rx="0" fill="#FFE3BE" opacity="0.45"/>
+  <text x="850" y="84" text-anchor="end" font-size="11" fill="#7A4A1A" font-weight="700">retries dominate</text>
+  <line x1="96" y1="282.0" x2="860" y2="282.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="286.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0 min</text>
+  <line x1="96" y1="234.72727272727272" x2="860" y2="234.72727272727272" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="238.72727272727272" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">10 min</text>
+  <line x1="96" y1="187.45454545454544" x2="860" y2="187.45454545454544" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="191.45454545454544" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">20 min</text>
+  <line x1="96" y1="140.1818181818182" x2="860" y2="140.1818181818182" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="144.1818181818182" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">30 min</text>
+  <line x1="96" y1="92.9090909090909" x2="860" y2="92.9090909090909" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="96.9090909090909" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">40 min</text>
+  <line x1="100.0" y1="282" x2="100.0" y2="287" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="100.0" y="302" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1</text>
+  <line x1="425.7142857142857" y1="282" x2="425.7142857142857" y2="287" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="425.7142857142857" y="302" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">8</text>
+  <line x1="534.2857142857142" y1="282" x2="534.2857142857142" y2="287" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="534.2857142857142" y="302" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">16</text>
+  <line x1="642.8571428571429" y1="282" x2="642.8571428571429" y2="287" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="642.8571428571429" y="302" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">32</text>
+  <line x1="751.4285714285714" y1="282" x2="751.4285714285714" y2="287" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="751.4285714285714" y="302" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">64</text>
+  <line x1="860.0" y1="282" x2="860.0" y2="287" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="860.0" y="302" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">128</text>
+  <text x="100" y="326" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">concurrent requests (log scale)</text>
+  <path d="M100.0,88.2 L425.7,253.2 L534.3,265.9 L642.9,270.7 L751.4,269.7 L860.0,265.0" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <circle cx="100.0" cy="88.18181818181819" r="4.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="425.7142857142857" cy="253.16363636363636" r="4.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="534.2857142857142" cy="265.92727272727274" r="4.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="642.8571428571429" cy="270.6545454545454" r="4.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="751.4285714285714" cy="269.7090909090909" r="4.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <circle cx="860.0" cy="264.9818181818182" r="4.5" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1"/>
+  <text x="114.0" y="92.18181818181819" text-anchor="start" font-size="11.5" fill="#2C6E8F" font-weight="700">41 min sequential</text>
+  <circle cx="642.8571428571429" cy="270.6545454545454" r="9" fill="none" stroke="#3D8B5F" stroke-width="2"/>
+  <text x="642.8571428571429" y="252.65454545454543" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">knee — 2.4 min</text>
+  <rect x="100" y="322" width="366" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="283.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">Set the semaphore at the knee, not at the</text>
+  <text x="283.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">maximum the event loop can open</text>
+  <rect x="484" y="322" width="376" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="672.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">Past it, throughput falls while the service</text>
+  <text x="672.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">is being hammered — the worst of both</text>
+</svg>
 
 ## Downstream Integrity Assertion
 

@@ -5,6 +5,7 @@ Production-grade renewable resource modeling lives or dies on spatial determinis
 The stack is deliberately conventional and well-supported: `xarray` and `dask` for labeled, lazy multidimensional arrays; `rioxarray` and `rasterio` for raster I/O and windowed reads; `geopandas` and `shapely` for vector boundaries and geometry repair; `pyproj` for explicit coordinate transforms; and `pvlib` plus custom `numpy` kernels for the physics. The six stages below move from raw ingest to monitored deployment, and each maps to a dedicated workflow elsewhere on this site — [solar irradiance raster processing](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/solar-irradiance-raster-processing/), [wind speed and direction modeling](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/wind-speed-direction-modeling/), [terrain and shadow analysis pipelines](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/terrain-shadow-analysis-pipelines/), and [temporal data aggregation](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/temporal-data-aggregation/) — that you can drill into for the implementation detail this overview deliberately compresses.
 
 <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six-stage renewable resource modeling pipeline: ingest and schema validation, CRS alignment, topology and geometry repair, resource modeling, memory and out-of-core processing, and deployment with ISO 19115 metadata" style="width:100%;max-width:880px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="880" height="340"/>
   <title>Solar &amp; Wind Resource Modeling Pipeline Overview</title>
   <desc>A snake-layout data flow diagram. The top row runs left to right through Stage 1 ingest and schema validation, Stage 2 CRS alignment and projection, and Stage 3 topology and geometry repair. The flow then drops down on the right into Stage 4 resource modeling for solar and wind, and the bottom row runs back right to left through Stage 5 memory and out-of-core processing and Stage 6 deployment and ISO 19115 metadata, which is the highlighted terminal artifact.</desc>
   <defs>
@@ -166,6 +167,54 @@ With clean geometry guaranteed, the clip that bounds the resource model is exact
 
 This is the analytical core unique to renewable assessment, where harmonized rasters become energy. The two technologies share infrastructure but diverge in physics, and each has a dedicated workflow that this stage orchestrates.
 
+<svg viewBox="0 0 940 400" role="img" aria-label="The loss chain that separates a resource figure from metered energy for a 100 megawatt fixed-tilt array. Plane-of-array transposition adds 8 percent to horizontal irradiance; soiling removes 2 percent, cell temperature 6.5, DC wiring and mismatch 2, inverter conversion 2.5, clipping at a 1.25 DC to AC ratio 1.4, and availability 2. The resource is the first number in the chain, not the answer — quoting it as yield overstates delivered energy by about 8 percent even after the transposition gain." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>From horizontal irradiance to metered AC energy</title>
+  <desc>A waterfall chart starting at 100 percent of global horizontal irradiance. Plane-of-array transposition adds 8 percent. Then successive losses are deducted: soiling 2 percent, cell temperature 6.5 percent, DC wiring and mismatch 2 percent, inverter conversion 2.5 percent, inverter clipping 1.4 percent and availability 2 percent. The final bar, metered AC energy, stands at 92.1 percent of the horizontal resource. A note observes that the transposition gain and the temperature loss nearly cancel, which is why a resource figure quoted as yield looks plausible.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="ls-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">A 100 MW fixed-tilt array: what reaches the meter</text>
+  <rect x="44" y="102.6086956521739" width="88" height="177.3913043478261" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3"/>
+  <text x="88" y="93.6086956521739" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">100.0</text>
+  <text x="88" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">GHI</text>
+  <text x="88" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">resource</text>
+  <rect x="144" y="88.41739130434783" width="88" height="14.191304347826087" rx="4" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.3"/>
+  <text x="188" y="79.41739130434783" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">8.0</text>
+  <text x="188" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">+</text>
+  <text x="188" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">POA transposition</text>
+  <rect x="244" y="88.41739130434783" width="88" height="3.5478260869565217" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="288" y="79.41739130434783" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">2.0</text>
+  <text x="288" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">−</text>
+  <text x="288" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">soiling</text>
+  <rect x="344" y="91.96521739130435" width="88" height="11.530434782608696" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="388" y="82.96521739130435" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">6.5</text>
+  <text x="388" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">−</text>
+  <text x="388" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">cell temperature</text>
+  <rect x="444" y="103.49565217391304" width="88" height="3.5478260869565217" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="488" y="94.49565217391304" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">2.0</text>
+  <text x="488" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">−</text>
+  <text x="488" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">DC wiring/mismatch</text>
+  <rect x="544" y="107.04347826086956" width="88" height="4.434782608695652" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="588" y="98.04347826086956" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">2.5</text>
+  <text x="588" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">−</text>
+  <text x="588" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">inverter conversion</text>
+  <rect x="644" y="111.47826086956522" width="88" height="3" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="688" y="102.47826086956522" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">1.4</text>
+  <text x="688" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">−</text>
+  <text x="688" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">clipping (1.25 DC:AC)</text>
+  <rect x="744" y="113.96173913043481" width="88" height="3.5478260869565217" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="788" y="104.96173913043481" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">2.0</text>
+  <text x="788" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">−</text>
+  <text x="788" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">availability</text>
+  <rect x="844" y="117.50956521739133" width="88" height="162.49043478260867" rx="4" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.8"/>
+  <text x="888" y="108.50956521739133" text-anchor="middle" font-size="12" fill="#1F5C3A" font-weight="700">91.6</text>
+  <text x="888" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">metered</text>
+  <text x="888" y="316" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">AC energy</text>
+  <line x1="34" y1="280" x2="920" y2="280" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="44" y="330" width="876" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="482.0" y="351" text-anchor="middle" font-size="11.5" fill="currentColor">The transposition gain and the temperature loss nearly cancel, which is exactly why a resource figure</text>
+  <text x="482.0" y="368" text-anchor="middle" font-size="11.5" fill="currentColor">quoted as yield looks plausible — and lands about 8% high once the rest of the chain is applied.</text>
+</svg>
+
 On the solar side, the satellite or reanalysis irradiance components — global horizontal (GHI), direct normal (DNI), and diffuse horizontal (DHI) — are corrected for atmospheric turbidity and aerosol optical depth, then transposed onto the plane of array for the chosen fixed-tilt or tracker geometry. The full spectral decomposition, cloud interpolation, and plane-of-array conversion are covered in [solar irradiance raster processing](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/solar-irradiance-raster-processing/). Critically, the transposition must be debited by the self-shading and inter-row shading masks produced upstream by [terrain and shadow analysis pipelines](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/terrain-shadow-analysis-pipelines/), so that occluded pixels never contribute phantom generation. From plane-of-array irradiance, the annual capacity factor follows directly:
 
 $$ \mathrm{CF} = \frac{\sum_{t=1}^{8760} P_t}{P_{\text{rated}} \times 8760} $$
@@ -278,6 +327,7 @@ def assert_output_integrity(yield_da, expected_epsg: int) -> None:
 ```
 
 <svg viewBox="0 0 860 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Production deployment view: a version-pinned container image feeds an asyncio and ThreadPoolExecutor worker pool, which branches to ISO 19115 sidecar metadata, structured JSON logs flowing to a monitoring sink, and a CI/CD integrity gate that blocks release on assertion failure" style="width:100%;max-width:860px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="860" height="380"/>
   <title>Production Deployment &amp; Monitoring Architecture</title>
   <desc>A left-to-right deployment diagram. A version-pinned container image holding GDAL, PROJ, and xarray feeds a worker pool that combines asyncio for input-output-bound raster reads with a ThreadPoolExecutor for compute-bound transforms. The worker pool fans out to three outputs: an ISO 19115 sidecar metadata file carrying lineage and a checksum, a monitoring sink receiving structured JSON logs that alert on affine drift and CRS mismatch, and a highlighted CI/CD integrity gate that blocks the release when an output-integrity assertion fails.</desc>
   <defs>
@@ -321,6 +371,92 @@ def assert_output_integrity(yield_da, expected_epsg: int) -> None:
 ## Conclusion
 
 Modern renewable resource assessment demands more than statistical curve-fitting; it requires a spatially deterministic pipeline that respects coordinate integrity, memory constraints, and regulatory compliance at every step. Structuring solar and wind workflows around schema-validated ingestion, explicit CRS harmonization, deterministic geometry repair, physics-faithful modeling, out-of-core aggregation, and metadata-stamped deployment is what turns raw meteorological inputs into bankable, grid-ready forecasts where every pixel and timestamp is defensible. Each stage above has a deeper companion workflow on this site: start with [solar irradiance raster processing](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/solar-irradiance-raster-processing/) and [wind speed and direction modeling](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/wind-speed-direction-modeling/) for the physics, layer in [terrain and shadow analysis pipelines](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/terrain-shadow-analysis-pipelines/) for occlusion, and close the loop with [temporal data aggregation](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/temporal-data-aggregation/) for the P50/P90 metrics that financiers and grid planners consume.
+
+
+## Frequently asked questions
+
+### Is a resource figure the same as an energy estimate?
+
+No, and the gap is larger than it looks. Plane-of-array transposition adds roughly 8 percent to
+horizontal irradiance, then soiling, cell temperature, DC losses, inverter conversion, clipping and
+availability remove more than that again. The two roughly cancel, which is exactly why quoting a
+resource figure as yield produces a number that survives casual review and lands several percent
+high. Report the resource and the modelled energy separately, with the loss stack that connects
+them.
+
+### How many years of resource data are enough?
+
+For solar, a single well-validated year is usually within a few percent of the long-term mean, and
+the useful practice is to compare that year against a longer reanalysis record to detect an unusual
+one. For wind, one year is not enough: interannual variability in wind speed is large, and because
+energy scales with the cube of speed, a 5 percent speed anomaly is a 16 percent energy anomaly. The
+standard answer is a measure-correlate-predict exercise against a long-term reference, not a longer
+on-site campaign.
+
+### Why does the pipeline resample the coarse grid up rather than the fine grid down?
+
+Because averaging the fine grid down throws away the resolution that justified using it, while
+upsampling the coarse grid is an honest interpolation as long as the output metadata says so. A NASA
+POWER half-degree cell covers roughly 144 PVGIS cells; downsampling PVGIS to POWER makes the two
+comparable by making both coarse. The rule that matters more than either choice: a stack has exactly
+one geotransform, and every band in it must share that transform exactly.
+
+### Which resampling kernel should terrain and land-cover use?
+
+Nearest neighbour for anything categorical — land cover, exclusion masks, zoning classes — because
+every other kernel invents values that are not in the source. Bilinear for continuous surfaces being
+upsampled, average when downsampling continuous surfaces, and cubic only where a genuinely smooth
+surface is wanted and the overshoot at edges is acceptable. The kernel follows from what the pixel
+values mean, never from how the output looks.
+
+### What is the most common temporal-aggregation mistake?
+
+Applying the wrong aggregator for the unit. Irradiance in watts per square metre is a rate and is
+averaged; energy in kilowatt-hours is a quantity and is summed. Neither mistake raises, and both
+produce columns of plausible magnitude. The second most common is an unweighted mean of monthly
+means, which quietly treats February and July as equally long. Both are cheap to prevent by
+asserting the unit in the schema and dispatching the aggregator from it.
+
+### Do I need hourly data, or will monthly averages do?
+
+Monthly averages are adequate for a first-pass resource comparison between sites and inadequate for
+anything downstream of it. Capacity factors, clipping losses, curtailment exposure and storage
+sizing all depend on the shape of the hourly profile, not on its mean. Once a site is shortlisted
+the hourly series is the deliverable, and the monthly figures become a sanity check on it rather
+than an input.
+
+### How is shading loss from terrain different from shading loss from rows?
+
+Row-to-row shading is a function of the layout and can be traded against ground coverage ratio;
+terrain shading is a property of the site and cannot be designed away. A horizon profile is
+therefore computed once per site and applied to every layout variant, while row shading is
+recomputed for each variant. The two also fall at different times: terrain shading concentrates in
+winter mornings and evenings, which is when a capacity commitment is most likely to bind.
+
+
+### How should curtailment be represented in a yield model?
+
+As a separate, named loss applied after the physical chain, never folded into availability.
+Curtailment is a market and grid outcome rather than a plant property, it varies year to year far
+more than any physical loss, and financing parties want to see it isolated. A model that buries it
+inside an availability factor cannot answer the question every reviewer asks: how much of the gap
+between simulated and metered energy was the plant, and how much was the grid.
+
+### What resolution of resource data does a layout study need?
+
+Fine enough to resolve the variation across the site, which for solar is usually a single value and
+for wind is emphatically not. Irradiance varies slowly in space, so one point per site is often
+defensible; hub-height wind varies with terrain over hundreds of metres, so a layout study needs a
+field rather than a point, and the uncertainty of that field is what the variance surface reports.
+
+
+### Should resource and yield modelling live in the same pipeline?
+
+They should be separate stages with a recorded handoff. The resource stage is expensive, slow to
+change and shared across every project in a region; the yield stage is cheap, changes with every
+design revision, and is specific to one layout. Keeping them separate means a design iteration does
+not re-run a national raster job, and a resource refresh does not silently restate every published
+yield figure.
 
 ## Related
 

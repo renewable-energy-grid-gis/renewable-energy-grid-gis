@@ -29,6 +29,7 @@ $$ V = \sqrt{u^2 + v^2} \qquad \theta = \left(270 - \tfrac{180}{\pi}\,\operatorn
 Because `atan2` consumes the signed `u` and `v` directly, the discontinuity never enters the arithmetic — the wrap is applied once, at the very end, on the reconstructed bearing rather than on every interpolation weight. This is the same vector-first discipline that the child workflow on [calculating wind shear coefficients with Python](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/wind-speed-direction-modeling/calculating-wind-shear-coefficients-with-python/) applies to the vertical profile.
 
 <svg viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of two ways to interpolate wind bearings of 350 degrees and 10 degrees. Averaging the bearings as plain numbers gives 180 degrees, a vector pointing south, which is wrong. Decomposing each reading into U and V components, interpolating those separately, then reconstructing with atan2 gives 0 degrees, pointing north, which is correct." style="width:100%;max-width:960px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="960" height="360"/>
   <title>Why bearings must be decomposed before interpolation</title>
   <desc>Two side-by-side panels each take the same two wind directions, 350 degrees and 10 degrees, which lie two degrees apart around north. The left panel takes the scalar mean of the bearings and gets 180 degrees, a compass arrow pointing south, labelled wrong because the number line wraps at 360. The right panel decomposes each reading into orthogonal U and V components, interpolates the two components independently, then reconstructs the bearing with atan2 and gets 0 degrees, a compass arrow pointing north, labelled correct because the wrap never enters the arithmetic.</desc>
   <defs>
@@ -216,6 +217,42 @@ Keeping the working dtype at `float32` halves memory versus `float64` with negli
 
 Turbine hub heights routinely exceed the mast or LiDAR measurement elevation, so the gridded components must be scaled vertically. The power-law profile relates speed at height $z$ to the reference speed via the shear exponent $\alpha$:
 
+<svg viewBox="0 0 940 404" role="img" aria-label="A Weibull distribution with shape 2.1 and scale 8.4 metres per second has a mean speed of 7.44 metres per second, but wind power scales with the cube of speed, so the energy-weighted distribution peaks near 11 metres per second. Half the annual energy arrives in hours above 9.6 metres per second, which occupy only 29 percent of the year. A resource summary reported as a mean speed hides where the energy actually comes from." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Frequency peaks near 6 m/s; energy peaks near 11 m/s</title>
+  <desc>Two curves over a wind speed axis from 0 to 25 metres per second. The first is the Weibull frequency distribution with shape 2.1 and scale 8.4, peaking near 6 metres per second. The second is the same distribution weighted by the cube of speed — the energy contribution — which peaks near 11 metres per second and has a long right tail. The mean speed of 7.44 metres per second is marked on both. A shaded region above 9.6 metres per second is annotated as 29 percent of the hours and half the annual energy.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="404"/>
+  <defs><marker id="wb-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Weibull k = 2.1, c = 8.4 m/s — frequency against energy</text>
+  <line x1="90" y1="280" x2="880" y2="280" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="90" y1="68" x2="90" y2="280" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="90.0" y1="280" x2="90.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="90.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">0</text>
+  <line x1="248.0" y1="280" x2="248.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="248.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">5</text>
+  <line x1="406.0" y1="280" x2="406.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="406.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">10</text>
+  <line x1="564.0" y1="280" x2="564.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="564.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">15</text>
+  <line x1="722.0" y1="280" x2="722.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="722.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">20</text>
+  <line x1="880.0" y1="280" x2="880.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="880.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">25</text>
+  <text x="880" y="322" text-anchor="end" font-size="11.5" fill="currentColor" opacity="0.8">wind speed at hub height, m/s</text>
+  <rect x="393.36" y="68" width="486.64" height="212" rx="0" fill="#FFE3BE" opacity="0.4"/>
+  <text x="627.2" y="86" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">29% of hours · 50% of annual energy</text>
+  <path d="M97.9,269.8 L105.8,258.1 L113.7,246.0 L121.6,233.6 L129.5,221.1 L137.4,208.6 L145.3,196.2 L153.2,184.1 L161.1,172.4 L169.0,161.0 L176.9,150.1 L184.8,139.8 L192.7,130.1 L200.6,121.1 L208.5,112.7 L216.4,105.2 L224.3,98.4 L232.2,92.4 L240.1,87.2 L248.0,82.9 L255.9,79.5 L263.8,76.9 L271.7,75.1 L279.6,74.2 L287.5,74.0 L295.4,74.6 L303.3,76.0 L311.2,78.0 L319.1,80.7 L327.0,84.1 L334.9,88.0 L342.8,92.4 L350.7,97.3 L358.6,102.6 L366.5,108.3 L374.4,114.2 L382.3,120.5 L390.2,126.9 L398.1,133.5 L406.0,140.2 L413.9,147.0 L421.8,153.7 L429.7,160.5 L437.6,167.2 L445.5,173.8 L453.4,180.3 L461.3,186.7 L469.2,192.8 L477.1,198.8 L485.0,204.5 L492.9,210.1 L500.8,215.4 L508.7,220.4 L516.6,225.2 L524.5,229.7 L532.4,234.0 L540.3,238.0 L548.2,241.7 L556.1,245.3 L564.0,248.5 L571.9,251.6 L579.8,254.4 L587.7,256.9 L595.6,259.3 L603.5,261.5 L611.4,263.5 L619.3,265.3 L627.2,266.9 L635.1,268.4 L643.0,269.8 L650.9,271.0 L658.8,272.0 L666.7,273.0 L674.6,273.9 L682.5,274.7 L690.4,275.3 L698.3,276.0 L706.2,276.5 L714.1,277.0 L722.0,277.4 L729.9,277.7 L737.8,278.1 L745.7,278.3 L753.6,278.6 L761.5,278.8 L769.4,279.0 L777.3,279.1 L785.2,279.3 L793.1,279.4 L801.0,279.5 L808.9,279.6 L816.8,279.6 L824.7,279.7 L832.6,279.7 L840.5,279.8 L848.4,279.8 L856.3,279.9 L864.2,279.9 L872.1,279.9 L880.0,279.9" fill="none" stroke="#5BA8C8" stroke-width="2.6"/>
+  <path d="M97.9,280.0 L105.8,280.0 L113.7,280.0 L121.6,279.9 L129.5,279.8 L137.4,279.7 L145.3,279.4 L153.2,279.0 L161.1,278.3 L169.0,277.5 L176.9,276.3 L184.8,274.9 L192.7,273.0 L200.6,270.7 L208.5,268.0 L216.4,264.8 L224.3,261.1 L232.2,256.8 L240.1,251.9 L248.0,246.5 L255.9,240.6 L263.8,234.1 L271.7,227.1 L279.6,219.6 L287.5,211.7 L295.4,203.4 L303.3,194.7 L311.2,185.9 L319.1,176.8 L327.0,167.7 L334.9,158.6 L342.8,149.5 L350.7,140.6 L358.6,132.0 L366.5,123.7 L374.4,115.8 L382.3,108.4 L390.2,101.6 L398.1,95.5 L406.0,90.0 L413.9,85.3 L421.8,81.4 L429.7,78.3 L437.6,76.0 L445.5,74.6 L453.4,74.0 L461.3,74.2 L469.2,75.3 L477.1,77.1 L485.0,79.7 L492.9,83.0 L500.8,87.0 L508.7,91.6 L516.6,96.7 L524.5,102.4 L532.4,108.4 L540.3,114.8 L548.2,121.6 L556.1,128.5 L564.0,135.7 L571.9,142.9 L579.8,150.2 L587.7,157.6 L595.6,164.8 L603.5,172.0 L611.4,179.1 L619.3,186.0 L627.2,192.7 L635.1,199.2 L643.0,205.4 L650.9,211.3 L658.8,217.0 L666.7,222.4 L674.6,227.4 L682.5,232.2 L690.4,236.7 L698.3,240.8 L706.2,244.7 L714.1,248.3 L722.0,251.5 L729.9,254.6 L737.8,257.3 L745.7,259.9 L753.6,262.2 L761.5,264.2 L769.4,266.1 L777.3,267.8 L785.2,269.3 L793.1,270.7 L801.0,271.9 L808.9,272.9 L816.8,273.9 L824.7,274.7 L832.6,275.4 L840.5,276.1 L848.4,276.6 L856.3,277.1 L864.2,277.6 L872.1,277.9 L880.0,278.2" fill="none" stroke="#3D8B5F" stroke-width="2.6"/>
+  <line x1="325.09851287995144" y1="104" x2="325.09851287995144" y2="280" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.7"/>
+  <text x="317.09851287995144" y="120" text-anchor="end" font-size="11" fill="currentColor" font-weight="700">mean 7.44 m/s</text>
+  <rect x="90" y="314" width="16" height="12" rx="2" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="114" y="325" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">frequency — hours at each speed</text>
+  <rect x="420" y="314" width="16" height="12" rx="2" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="444" y="325" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">energy contribution — frequency × v³</text>
+  <rect x="90" y="342" width="790" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="485.0" y="363" text-anchor="middle" font-size="11.5" fill="currentColor">Two sites with the same 7.4 m/s mean can differ by 20% in annual energy if their shape parameters</text>
+  <text x="485.0" y="380" text-anchor="middle" font-size="11.5" fill="currentColor">differ — which is why the distribution, not the mean, is what a resource assessment reports.</text>
+</svg>
+
 $$ v(z) = v_{\text{ref}} \left(\frac{z}{z_{\text{ref}}}\right)^{\alpha} $$
 
 Because $u$ and $v$ scale linearly with speed, the same ratio applies to both components, so the field can be scaled by broadcasting a single scalar across the grid. The exponent itself varies with terrain roughness and atmospheric stability; deriving a defensible, site-specific $\alpha$ rather than assuming the open-terrain default of 0.143 is the subject of the companion workflow on [calculating wind shear coefficients with Python](https://www.renewable-energy-grid-gis.org/solar-wind-resource-modeling-workflows/wind-speed-direction-modeling/calculating-wind-shear-coefficients-with-python/).
@@ -346,6 +383,7 @@ async def write_wind_raster_async(
 Beyond a single grid, the usual scaling levers apply: align `block_size` with the GeoTIFF tile dimensions to avoid re-blocking on read, raise `GDAL_CACHEMAX` for write-heavy runs, and for very large domains build per-tile interpolations behind a VRT rather than one monolithic array. Most bottlenecks here come from a redundant reprojection inside a loop or an unchunked grid fill — profile before reaching for a bigger machine.
 
 <svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The wind-field pipeline runs left to right through six stages: ingest a station CSV, validate and reproject through the CRS gate, decompose vectors into U and V components, interpolate each component in bounded chunks, scale to hub height with the power-law shear ratio, and write a tiled GeoTIFF. A downward branch off the interpolation stage routes a degenerate, all-NaN or sparse-station grid to an abort node so a corrupt field is never written." style="width:100%;max-width:980px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="980" height="300"/>
   <title>Wind Speed and Direction Modeling Pipeline</title>
   <desc>A six-stage left-to-right data flow. Stage 1 ingests a station CSV or Parquet table of anemometer, mast and LiDAR observations. Stage 2 is the CRS gate, which validates records and reprojects from EPSG:4326 to a metric frame such as EPSG:32612. Stage 3 decomposes each vector into U and V components using u equals minus V sine theta and v equals minus V cosine theta. Stage 4 interpolates each component independently with chunked griddata in bounded memory; a downward branch off this stage detects an all-NaN or under-four-station grid and routes it to an abort-and-log node so no corrupt field is serialized. Stage 5 applies the power-law hub-height shear ratio. The highlighted terminal Stage 6 writes a tiled, compressed GeoTIFF carrying U and V bands plus hub-height and alpha provenance tags.</desc>
   <defs>
@@ -431,6 +469,32 @@ def audit_wind_raster(raster_path: str, expected_epsg: int,
 ```
 
 The completeness checklist for a compliant artifact is: band descriptions (`wind_speed_u_ms`, `wind_speed_v_ms`) plus the `hub_height_m` and shear `alpha` recorded as raster tags; projection consistency with the project boundary shapefile; and the statistical sanity check that reconstructed speed stays below the 95th percentile of regional climatology. Production deployments wrap the whole sequence in a configuration-driven orchestrator (Prefect or Airflow) for temporal aggregation, chunk-level retries, and metadata cataloging. Those gridded fields then feed grid-screening work, where the resource surface is cross-referenced against [grid capacity buffer analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/) thresholds — the metadata contract is what lets two pipelines trust each other's outputs.
+
+
+## Frequently asked questions
+
+### Why interpolate U and V components instead of speed and direction?
+
+Because direction is circular and speed is not. Averaging bearings of 350° and 10° arithmetically
+gives 180° — the exact opposite of the correct 0° — while decomposing into eastward and northward
+components, interpolating each, and recomposing gives the right answer for both speed and direction
+at once. The decomposition also makes the speed field continuous across the north seam, which is
+where naive interpolation produces its worst artefacts.
+
+### How many masts are needed before interpolation is defensible?
+
+Enough that the variogram range covers the gaps, which is a statement about spacing rather than
+count. Fourteen masts across an area whose correlation range is 12 kilometres can leave a corner
+where the nearest mast is 18 kilometres away, and the prediction there is extrapolation wearing an
+interpolation's clothes. Publish the variance surface next to the prediction and the question
+answers itself for each turbine position.
+
+### Should hub-height extrapolation happen before or after interpolation?
+
+After, when the shear exponent varies across the site — which it does wherever roughness varies.
+Extrapolate each mast to hub height using its own measured shear, then interpolate the hub-height
+field; interpolating at measurement height and applying one site-wide exponent afterwards imposes a
+uniform shear the terrain does not have.
 
 ## Related
 

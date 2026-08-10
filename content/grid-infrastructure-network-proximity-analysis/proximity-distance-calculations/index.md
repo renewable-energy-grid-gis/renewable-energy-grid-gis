@@ -35,6 +35,7 @@ Third, **memory spike**. Materializing a dense N×M distance matrix — or calli
 Fourth, **async latency on network-constrained legs**. When a straight line is meaningless — a candidate separated from the grid by a ridge, a protected wetland, or a missing right-of-way — the real distance comes from a routing service or a cost-surface solver. Issuing those calls synchronously, one site at a time, serializes thousands of independent I/O waits into an unusable wall-clock time.
 
 <svg viewBox="0 0 1080 470" role="img" aria-label="Proximity scoring decision flow: raw lon/lat geometries are normalized to a projected CRS, the search space is pruned with an R-tree bounding-box query, exact distances are measured on the pruned subset, then a branch checks whether the straight-line path is obstructed — obstructed legs go through async network routing, clear legs go straight to capacity and regulatory flags, and both converge on an audit-ready feasibility score. Two warning callouts mark the failure modes each stage prevents: unprojected CRS yielding degrees instead of metres, and a dense N by M distance matrix exhausting memory." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1080" height="470"/>
   <title>Proximity distance scoring pipeline with branch for obstructed legs</title>
   <desc>A flow that moves raw lon/lat geometries through projected-CRS normalization, an R-tree bounding-box prune, and exact distance measurement on the pruned subset, then branches on whether the straight-line path is obstructed: obstructed legs resolve through async network routing while clear legs pass directly to capacity and regulatory flags, both converging on an audit-ready feasibility score. Amber callouts mark the failure each guarded stage avoids — unprojected CRS returning degrees not metres, and a dense N by M distance matrix blowing up memory.</desc>
   <defs>
@@ -224,6 +225,36 @@ The `search_radius_m` envelope is what keeps the pruned subset small: it bounds 
 
 Each of the failure modes named above has a concrete guard.
 
+<svg viewBox="0 0 940 396" role="img" aria-label="Why the tail of the circuity distribution exists. A candidate site 8.2 kilometres from its point of interconnection in a straight line has a river, a designated wildlife corridor and a rail crossing between it and the substation. The routable path leaves at a bearing 40 degrees off the direct line, crosses at the existing bridge, and runs 14.6 kilometres — a circuity factor of 1.78 that no straight-line screen can see." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>One obstructed leg: 8.2 km as the crow flies, 14.6 km as the line must run</title>
+  <desc>A plan view with the candidate site at the lower left and the substation at the upper right. A dashed straight line between them is annotated 8.2 kilometres. Between them lie three obstacles: a river running north to south, a shaded wildlife corridor, and a rail line. The routable path leaves the site heading north, follows the river to an existing bridge crossing, skirts the southern edge of the wildlife corridor, and approaches the substation from the west; it is annotated 14.6 kilometres, a circuity factor of 1.78.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="ob-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The straight line is 8.2 km; nothing can be built along it</text>
+  <rect x="40" y="56" width="860" height="268" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25"/>
+  <path d="M300,56 C330,120 280,180 320,240 C348,282 330,306 340,324" fill="none" stroke="#5BA8C8" stroke-width="8" opacity="0.45"/>
+  <text x="258" y="100" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">river</text>
+  <rect x="470" y="90" width="300" height="96" rx="8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4" opacity="0.6"/>
+  <text x="620" y="126" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">designated wildlife corridor</text>
+  <text x="620" y="146" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">no new linear infrastructure</text>
+  <line x1="420" y1="324" x2="900" y2="232" stroke="currentColor" stroke-width="2.4" stroke-dasharray="9 5" opacity="0.35"/>
+  <text x="700" y="300" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">rail line</text>
+  <circle cx="120" cy="280" r="8" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <text x="120" y="306" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">candidate site</text>
+  <circle cx="846" cy="100" r="8" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <text x="846" y="82" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">substation</text>
+  <line x1="128" y1="276" x2="838" y2="106" stroke="currentColor" stroke-width="1.6" stroke-dasharray="6 4" opacity="0.7"/>
+  <text x="430" y="208" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">8.2 km straight line</text>
+  <path d="M124,272 L150,190 L246,166 L318,150 L392,196 L470,214 L560,214 L664,196 L760,150 L838,108" fill="none" stroke="#F4A261" stroke-width="2.8"/>
+  <text x="300" y="132" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">routable path 14.6 km · circuity 1.78</text>
+  <rect x="40" y="340" width="424" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="252.0" y="361" text-anchor="middle" font-size="11.5" fill="currentColor">A straight-line screen ranks this site third;</text>
+  <text x="252.0" y="378" text-anchor="middle" font-size="11.5" fill="currentColor">the routed cost ranks it eleventh</text>
+  <rect x="480" y="340" width="420" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="690.0" y="361" text-anchor="middle" font-size="11.5" fill="currentColor">Route only the shortlist — routing every</text>
+  <text x="690.0" y="378" text-anchor="middle" font-size="11.5" fill="currentColor">candidate is what makes screening slow</text>
+</svg>
+
 **Unprojected or mismatched CRS.** The single most common silent corruption. Assert that both layers share the projected target frame before scoring — never compute distance across a CRS boundary:
 
 ```python
@@ -249,6 +280,52 @@ def assert_projected_meters(*gdfs: gpd.GeoDataFrame, expected_epsg: int = 32610)
 ## Performance & Scalability — Network-Constrained Routing
 
 For obstructed legs, the real distance comes from a routing service or a Dijkstra solve over a rasterized impedance surface. These are I/O- and compute-bound and must run concurrently. The pattern below dispatches routing requests asynchronously while validating each spatial input before the call, and preserves order so results align with the input sites:
+
+<svg viewBox="0 0 940 400" role="img" aria-label="Why a straight-line distance is a screen and not an answer. Across 1,200 sited interconnections the ratio of routed length to straight-line length — the circuity factor — has a median of 1.28 and a long tail: a quarter of sites exceed 1.45 and the worst 5 percent exceed 1.9, where a river crossing or a protected corridor forces a long detour. A 10 kilometre straight line is therefore a 12.8 kilometre route at the median and a 19 kilometre route in the tail." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Routed length divided by straight-line length, across 1,200 sites</title>
+  <desc>A histogram of the circuity factor over 1,200 sited interconnections, binned from 1.0 to 2.2. The distribution peaks between 1.2 and 1.3, with a median marked at 1.28, a seventy-fifth percentile at 1.45 and a ninety-fifth percentile at 1.9. Annotations translate the percentiles into route length for a 10 kilometre straight line: 12.8 kilometres at the median, 14.5 at the seventy-fifth percentile and 19 in the tail, where a river crossing or protected corridor forces the detour.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="cf-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Straight-line distance screens candidates; routed distance prices them</text>
+  <line x1="76" y1="268" x2="900" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="76" y1="70" x2="76" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="90" y="248.8" width="64" height="19.200000000000003" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="122.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.0</text>
+  <rect x="162" y="197.60000000000002" width="64" height="70.39999999999999" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="194.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.1</text>
+  <rect x="234" y="95.19999999999999" width="64" height="172.8" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="266.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.2</text>
+  <rect x="306" y="114.39999999999998" width="64" height="153.60000000000002" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="338.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.3</text>
+  <rect x="378" y="172.0" width="64" height="96.0" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="410.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.4</text>
+  <rect x="450" y="216.8" width="64" height="51.2" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="482.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.5</text>
+  <rect x="522" y="236.0" width="64" height="32.0" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="554.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.6</text>
+  <rect x="594" y="248.8" width="64" height="19.200000000000003" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="626.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.7</text>
+  <rect x="666" y="255.2" width="64" height="12.8" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="698.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.8</text>
+  <rect x="738" y="259.04" width="64" height="8.959999999999999" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="770.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.9</text>
+  <rect x="810" y="264.16" width="64" height="3.84" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="842.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">2.0</text>
+  <text x="70" y="80" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8">% of sites</text>
+  <line x1="291.6" y1="70" x2="291.6" y2="268" stroke="#3D8B5F" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="299.6" y="84" text-anchor="start" font-size="11" fill="#1F5C3A" font-weight="700">median 1.28 → 12.8 km</text>
+  <line x1="414.0" y1="100" x2="414.0" y2="268" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.6"/>
+  <text x="422.0" y="116" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">75th 1.45 → 14.5 km</text>
+  <line x1="738" y1="132" x2="738" y2="268" stroke="#F4A261" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <text x="730" y="148" text-anchor="end" font-size="11" fill="#7A4A1A" font-weight="700">95th 1.9 → 19 km</text>
+  <text x="90" y="312" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">routed length ÷ straight-line length</text>
+  <rect x="90" y="322" width="400" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="290.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">Screen on straight-line distance — it is cheap</text>
+  <text x="290.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">and never under-states the route</text>
+  <rect x="506" y="322" width="394" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="703.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">Price on routed distance — the tail is where</text>
+  <text x="703.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">a project quietly stops penciling</text>
+</svg>
 
 ```python
 import asyncio
@@ -333,6 +410,49 @@ def apply_compliance_filters(
 The `capacity_threshold_km`, `regulatory_setback_m`, and `audit_timestamp` columns are not decorative — they are the provenance that lets a screening result be independently re-run and arrive at the same verdict. A feasibility score without the thresholds and timestamp that produced it is a number a reviewer has no basis to trust.
 
 At production scale, treat the whole sequence as a deterministic, auditable pipeline rather than an ad-hoc script: enforce schema validation on incoming GeoJSON/Parquet payloads, emit structured logs for every CRS assertion and `inf`-distance partition, and containerize the async workers to isolate routing-I/O bottlenecks. That discipline is what lets energy developers and GIS engineers scale interconnection feasibility studies across multi-state portfolios while staying inside regional grid codes and environmental permitting standards.
+
+
+## Frequently asked questions
+
+### Is geodesic distance worth the cost over projected distance?
+
+Rarely, inside a study area. A well-chosen projected frame agrees with the geodesic answer to within
+a few parts per ten thousand over the tens of kilometres an interconnection study spans, and the
+projected calculation is vectorised while the geodesic one is not. Geodesic distance earns its cost
+when the pairs span continental distances or cross zone boundaries — a portfolio-level "nearest
+substation anywhere in the country" query, not a county screen.
+
+### How should obstructed routes be handled in a first-pass screen?
+
+By flagging them, not by routing them. Compute straight-line distance for everything, then mark the
+legs whose straight line crosses a river, a protected corridor or a rail line, and carry a
+provisional circuity multiplier for those. Routing is an order of magnitude more expensive per leg
+and is the right tool for the shortlist, not the population — and a flagged leg is far more useful
+to a developer than a silently optimistic straight line.
+
+### What distance should a screen use when the point of interconnection is unknown?
+
+The distance to the nearest point on the nearest suitable circuit, with the suitability filter
+stated. That is not the same as the distance to the nearest substation, and the difference decides
+whether the project is a tap or a node interconnection — a distinction with a large cost
+consequence. Where neither is known, report both and let the ranking carry both columns rather than
+collapsing them into one number.
+
+### Why does the screen return a nearest substation that is obviously wrong?
+
+Almost always because the query ran against a reference set that was not filtered to serviceable
+assets: a decommissioned yard, a distribution-class node below the project's voltage, or a duplicate
+record from a second dataset. The geometry is doing exactly what it was asked. Filter the reference
+set by status and voltage class before building the index, and the same query returns a defensible
+answer.
+
+
+### How should distances be reported — to the asset or to its boundary?
+
+To the boundary of a polygon asset and to the point for a node, stated explicitly either way. A
+substation mapped as a yard polygon is several hundred metres across, so "distance to the substation"
+differs by that much depending on which convention is used — enough to reorder a shortlist of
+similar candidates. Fix the convention once, name it in the output column, and apply it everywhere.
 
 ## Related
 

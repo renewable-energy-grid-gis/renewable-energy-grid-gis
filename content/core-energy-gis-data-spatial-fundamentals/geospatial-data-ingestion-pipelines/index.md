@@ -29,6 +29,7 @@ Fourth, **partial writes**. A worker killed mid-write leaves a half-serialised G
 The diagram below shows the boundary as a single gate: heterogeneous sources enter, the contract is enforced once, and only records that satisfy it become the canonical frame handed to CRS alignment and topology repair. Everything that fails is quarantined with its reason, never silently dropped.
 
 <svg viewBox="0 0 1100 470" role="img" aria-label="Validate-at-the-boundary ingestion contract. Heterogeneous sources — Shapefile, GeoPackage, GeoParquet, GeoJSON, PostGIS and cloud object storage — flow into a single boundary validation gate. The gate enforces a pandera or pydantic schema, a declared CRS, geometry validity, a deterministic asset key for idempotent loading, and streamed partitions with no disk staging. A decision node asks whether the contract is satisfied: records that pass become one canonical GeoDataFrame contract that is handed off to CRS alignment and topology repair; records that fail are routed to an audited quarantine or dead-letter store." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1100" height="470"/>
   <title>The validate-at-the-boundary ingestion contract</title>
   <desc>Heterogeneous energy-GIS sources pass through one boundary validation gate that enforces schema, a declared CRS, geometry validity, a deterministic asset key and streamed partitions. A decision node splits records: those satisfying the contract become a single canonical GeoDataFrame handed to CRS alignment and topology repair, while failures are routed to an audited quarantine store.</desc>
   <defs>
@@ -239,6 +240,40 @@ Each of the failure modes named earlier gets a concrete guard.
 
 **Schema violations must be legible, not silent.** Calling `validate(..., lazy=True)` collects every failing row and column into a single `SchemaErrors` exception rather than dying on the first bad cell. A production ingest catches it, writes the offending rows to a dead-letter store keyed by `batch_id`, and continues — quarantining is auditable, discarding is not.
 
+<svg viewBox="0 0 940 388" role="img" aria-label="What a crash mid-write leaves behind under two write strategies. Writing in place over a live GeoParquet target leaves a truncated file that every downstream reader now treats as the truth. Writing to a unique staging key and renaming leaves the previous good target untouched until the rename lands, so a crash leaves either the old version or the new one and never a half-written one." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>A crash mid-write: in-place truncation versus staging plus atomic rename</title>
+  <desc>Two timelines running left to right through four moments: run starts, write begins, the process is killed, and a reader arrives. On the in-place timeline the target file is overwritten from the first byte, so the kill leaves a truncated target and the reader gets a partial dataset with no error. On the staging timeline the bytes go to a unique staging key while the target stays untouched, the kill leaves the staging object orphaned, and the reader still sees the previous complete target. A final rename step swaps the target atomically.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="388"/>
+  <defs><marker id="at-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Crash safety is a property of where the bytes land first</text>
+  <line x1="150" y1="56" x2="150" y2="330" stroke="currentColor" stroke-width="0.9" stroke-dasharray="4 4" opacity="0.2"/>
+  <text x="150" y="50" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">t0 · run starts</text>
+  <line x1="358" y1="56" x2="358" y2="330" stroke="currentColor" stroke-width="0.9" stroke-dasharray="4 4" opacity="0.2"/>
+  <text x="358" y="50" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">t1 · write begins</text>
+  <line x1="566" y1="56" x2="566" y2="330" stroke="currentColor" stroke-width="0.9" stroke-dasharray="4 4" opacity="0.2"/>
+  <text x="566" y="50" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">t2 · process killed</text>
+  <line x1="774" y1="56" x2="774" y2="330" stroke="currentColor" stroke-width="0.9" stroke-dasharray="4 4" opacity="0.2"/>
+  <text x="774" y="50" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">t3 · reader arrives</text>
+  <text x="20" y="100" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">in place</text>
+  <text x="20" y="118" text-anchor="start" font-size="10.5" fill="currentColor" opacity="0.75">to_parquet(target)</text>
+  <rect x="56" y="128" width="812" height="44" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="150" y="155" text-anchor="middle" font-size="11" fill="currentColor">target: complete</text>
+  <text x="358" y="155" text-anchor="middle" font-size="11" fill="currentColor">target: being overwritten</text>
+  <text x="566" y="155" text-anchor="middle" font-size="11" fill="currentColor">target: truncated</text>
+  <text x="774" y="155" text-anchor="middle" font-size="11" fill="currentColor">reads a partial dataset</text>
+  <text x="20" y="228" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">staging</text>
+  <text x="20" y="246" text-anchor="start" font-size="10.5" fill="currentColor" opacity="0.75">write → rename</text>
+  <rect x="56" y="256" width="812" height="44" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="150" y="283" text-anchor="middle" font-size="11" fill="currentColor">target: complete</text>
+  <text x="358" y="283" text-anchor="middle" font-size="11" fill="currentColor">staging key filling</text>
+  <text x="566" y="283" text-anchor="middle" font-size="11" fill="currentColor">staging orphaned</text>
+  <text x="774" y="283" text-anchor="middle" font-size="11" fill="currentColor">reads the old target</text>
+  <rect x="20" y="340" width="440" height="28" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="240.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">The truncated file has no marker saying it is partial</text>
+  <rect x="484" y="340" width="436" height="28" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="702.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">Rename is atomic: readers see old or new, never half</text>
+</svg>
+
 ```python
 from pandera.errors import SchemaErrors
 
@@ -289,6 +324,39 @@ def idempotent_upsert(new_gdf, target_uri, *, key="asset_key", storage_options=N
 ## Performance & Scalability: Streaming GeoParquet Partitions
 
 The scenario that breaks a naive ingest is a national GeoParquet dataset — tens of gigabytes of interconnection-queue points partitioned by state — sitting in `s3://`. Downloading it to local disk to `read_parquet` the whole thing wastes the format's entire advantage. GeoParquet is columnar and row-grouped, so the right pattern reads only the columns and partitions a job needs, streams them straight from object storage, and never stages a byte to disk.
+
+<svg viewBox="0 0 940 392" role="img" aria-label="What predicate and column pushdown actually save on a national Hive-partitioned GeoParquet dataset. Of 51 state partitions, a Texas and New Mexico screen opens 2; of 38 gigabytes on the wire, 1.4 gigabytes are read; of 22 columns, 4 are materialised. The filter is evaluated inside Arrow, so unmatched files are never opened at all." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Pushdown: what never gets read is the whole saving</title>
+  <desc>A funnel in three stages over a Hive-partitioned dataset. Stage one, partitions: 51 state directories exist and the state filter selects 2, so 49 are never opened. Stage two, bytes: 38 gigabytes of row groups exist and 1.4 gigabytes are transferred. Stage three, columns: the schema has 22 columns and the projection materialises 4. A note records that the filter runs inside Arrow before any object is fetched, so the saving is in files not opened rather than rows discarded after reading.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="pd-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Three filters, applied before the bytes move</text>
+  <text x="170" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">state partitions</text>
+  <rect x="40" y="78" width="260" height="150" rx="7" fill="none" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <rect x="60" y="96" width="220" height="114" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3" opacity="0.45"/>
+  <rect x="60" y="96" width="8.627450980392156" height="114" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6"/>
+  <text x="170" y="148" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">2 of 51</text>
+  <text x="170" y="168" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">directories</text>
+  <text x="170" y="248" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85">96% never touched</text>
+  <text x="470" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">gigabytes on the wire</text>
+  <rect x="340" y="78" width="260" height="150" rx="7" fill="none" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <rect x="360" y="96" width="220" height="114" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.45"/>
+  <rect x="360" y="96" width="8.105263157894736" height="114" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.6"/>
+  <text x="470" y="148" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">1.4 of 38</text>
+  <text x="470" y="168" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">GB read</text>
+  <text x="470" y="248" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85">96% never touched</text>
+  <text x="770" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">columns in the schema</text>
+  <rect x="640" y="78" width="260" height="150" rx="7" fill="none" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <rect x="660" y="96" width="220" height="114" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.3" opacity="0.45"/>
+  <rect x="660" y="96" width="40.0" height="114" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="770" y="148" text-anchor="middle" font-size="14" fill="currentColor" font-weight="700">4 of 22</text>
+  <text x="770" y="168" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">materialised</text>
+  <text x="770" y="248" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85">82% never touched</text>
+  <rect x="40" y="274" width="860" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="470.0" y="295" text-anchor="middle" font-size="11.5" fill="currentColor">The pruning happens inside Arrow, before a single object is fetched — a post-read filter would</text>
+  <text x="470.0" y="312" text-anchor="middle" font-size="11.5" fill="currentColor">still pay the full 38 GB transfer and the memory spike that comes with it.</text>
+  <text x="40" y="372" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">One county capacity screen against a national dataset: 4 s cold, not 11 min.</text>
+</svg>
 
 The generator below walks a Hive-partitioned dataset fragment by fragment, pushes the partition filter down into Arrow so unmatched files are never opened, and validates each partition against the same contract as it streams. Peak memory is bounded by the largest single row group, not the dataset — the full walkthrough of tuning row-group size, predicate push-down, and geometry-column decoding lives in [streaming GeoParquet from cloud object storage with GeoPandas](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/geospatial-data-ingestion-pipelines/streaming-geoparquet-from-cloud-object-storage-with-geopandas/).
 

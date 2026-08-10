@@ -21,6 +21,7 @@ The naive workflow fails for three compounding reasons, and none of them reliabl
 The relationship between buffer radius and the area screened is quadratic, which is why a small radius error propagates into a large capacity-allocation error. For a buffer of radius $r$ the screened area is $A = \pi r^2$, so a 20% radius inflation from an unprojected operation inflates the candidate-capture area — and the count of sites that appear to qualify — by roughly 44%.
 
 <svg viewBox="0 0 900 470" role="img" aria-label="Side-by-side comparison of two capacity buffering paths. The naive path applies one fixed radius in EPSG:4326, producing a latitude-distorted ellipse, then a unary_union and a sum of megawatts that double-counts shared overlap and over-allocates capacity. The correct path derives a per-asset radius from voltage class and thermal rating in projected UTM metres, producing true metric circles, then dissolves overlaps and reconciles capacity to the minimum, yielding a defensible headroom surface." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="470"/>
   <title>Naive versus correct grid capacity buffering</title>
   <desc>Two stacked three-step pipelines. Left (naive): step 1 one fixed radius in geographic degrees; step 2 a latitude-distorted ellipse compared against a true-circle reference; step 3 unary_union then a sum of megawatts that double-counts overlap; result an over-allocated capacity figure. Right (correct): step 1 a per-asset radius scaled by voltage class and thermal rating in metres; step 2 two true metric circles sized to voltage class; step 3 dissolve then minimum-capacity reconciliation; result a defensible headroom surface.</desc>
   <rect x="20" y="50" width="420" height="406" rx="12" fill="none" stroke="currentColor" stroke-width="1" opacity="0.22"/>
@@ -82,9 +83,9 @@ The relationship between buffer radius and the area screened is quadratic, which
     <line x1="670" y1="391" x2="670" y2="407"/><path d="M664 405 L670 413 L676 405 Z" stroke="none"/>
   </g>
   <g text-anchor="middle">
-    <rect x="80" y="418" width="300" height="30" rx="15" fill="#C85B5B" stroke="#C85B5B" stroke-width="1.5"/>
+    <rect x="80" y="418" width="300" height="30" rx="15" fill="#A63F3F" stroke="#A63F3F" stroke-width="1.5"/>
     <text x="230" y="438" font-size="12.5" font-weight="700" fill="#FFFFFF">Over-allocated capacity</text>
-    <rect x="520" y="418" width="300" height="30" rx="15" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1.5"/>
+    <rect x="520" y="418" width="300" height="30" rx="15" fill="#2E7048" stroke="#2E7048" stroke-width="1.5"/>
     <text x="670" y="438" font-size="12.5" font-weight="700" fill="#FFFFFF">Defensible headroom surface</text>
   </g>
 </svg>
@@ -134,6 +135,44 @@ def standardize_crs_and_validate(substation_gdf: gpd.GeoDataFrame, name: str) ->
 
     return substation_gdf
 ```
+
+<svg viewBox="0 0 940 400" role="img" aria-label="How a per-asset buffer radius is derived. The voltage class sets a base radius — 2 kilometres for distribution below 115 kilovolts, 5 kilometres for sub-transmission from 115 kilovolts, and 8 kilometres for bulk transmission from 230 kilovolts — and the thermal rating scales it by a factor clamped between 0.5 and 1.5. A 230 kilovolt node at 40 percent thermal rating therefore gets 8 kilometres times 0.5, or 4 kilometres, not the 3.2 kilometres an unclamped factor would produce." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Base radius from voltage class, scaled by a clamped thermal factor</title>
+  <desc>Three concentric radius bands drawn to scale for the three voltage classes: 2 kilometres for distribution under 115 kilovolts, 5 kilometres for sub-transmission at 115 kilovolts and above, and 8 kilometres for bulk transmission at 230 kilovolts and above. Beside them a scale bar shows the thermal factor clamped to the range 0.5 to 1.5, with the unclamped region greyed out at both ends, and a worked example: a 230 kilovolt node at 40 percent thermal rating clamps to 0.5 and buffers at 4 kilometres.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="vr-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Two inputs decide the radius: the voltage class and the thermal rating</text>
+  <circle cx="240" cy="190" r="116" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6" opacity="0.55"/>
+  <circle cx="240" cy="190" r="72" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6" opacity="0.55"/>
+  <circle cx="240" cy="190" r="29" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.6" opacity="0.55"/>
+  <circle cx="240" cy="190" r="4" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <text x="240" y="66" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">8 km</text>
+  <text x="240" y="110" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">5 km</text>
+  <text x="240" y="153" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">2 km</text>
+  <rect x="420" y="78" width="14" height="14" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="444" y="90" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">bulk ≥ 230 kV → 8 km base radius</text>
+  <rect x="420" y="104" width="14" height="14" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="444" y="116" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">sub-transmission ≥ 115 kV → 5 km base radius</text>
+  <rect x="420" y="130" width="14" height="14" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="444" y="142" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">distribution &lt; 115 kV → 2 km base radius</text>
+  <text x="420" y="178" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">thermal factor = thermal_rating_pct ÷ 100, clamped</text>
+  <rect x="420" y="192" width="460" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <rect x="420" y="192" width="92" height="30" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.7"/>
+  <rect x="696" y="192" width="184" height="30" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.7"/>
+  <rect x="512" y="192" width="184" height="30" rx="4" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="604" y="212" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">0.5 – 1.5 accepted</text>
+  <text x="466" y="212" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">clamped up</text>
+  <text x="788" y="212" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">clamped down</text>
+  <text x="420" y="240" text-anchor="start" font-size="10.5" fill="currentColor" opacity="0.75">0.0</text>
+  <text x="880" y="240" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.75">2.0</text>
+  <rect x="420" y="258" width="460" height="65" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="650.0" y="279" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">230 kV node at 40% thermal rating</text>
+  <text x="650.0" y="296" text-anchor="middle" font-size="11.5" fill="currentColor">8 000 m × clamp(0.4) = 8 000 × 0.5 = 4 000 m</text>
+  <text x="650.0" y="313" text-anchor="middle" font-size="11.5" fill="currentColor">an unclamped factor would have given 3 200 m</text>
+  <rect x="40" y="332" width="356" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="218.0" y="353" text-anchor="middle" font-size="11.5" fill="currentColor">The clamp is what keeps a mis-keyed</text>
+  <text x="218.0" y="370" text-anchor="middle" font-size="11.5" fill="currentColor">rating from collapsing a zone to nothing</text>
+</svg>
 
 Buffer radius is derived from the asset, not assumed. Interconnection reach scales with voltage class, then is modulated by thermal headroom so that a node already running near its rating projects a tighter zone than one with spare capacity. The radius derivation is the natural consumer of the [proximity distance calculations](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/proximity-distance-calculations/) that account for impedance, fault-current limits, and regulatory clearance.
 
@@ -251,6 +290,41 @@ Additional tuning that matters at portfolio scale:
 
 A capacity surface that a financial or permitting reviewer cannot reproduce is a liability, not a deliverable. The orchestration stage concatenates the processed chunks, dissolves them, runs compliance assertions, and stamps every output with the lineage needed to reconstruct it — the target CRS, the dissolve rule, and a build timestamp.
 
+<svg viewBox="0 0 940 392" role="img" aria-label="Why a dissolved capacity zone takes the minimum headroom of its contributors rather than the sum. Three substations with 120, 80 and 45 megawatts of available headroom sit close enough that their buffers overlap into one zone. Summing gives 245 megawatts of apparent capacity; the shared upstream transformer that constrains all three can deliver 45. A developer siting against 245 megawatts is planning around capacity that does not exist." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>A dissolved zone is worth its most constrained contributor, not their sum</title>
+  <desc>Three overlapping circles labelled with 120, 80 and 45 megawatts of available headroom, dissolved into a single zone. Two result panels follow. The first, marked incorrect, sums them to 245 megawatts. The second, marked correct, takes the minimum of 45 megawatts and notes that the shared upstream constraint is what the number has to respect. A footnote records that the contributing asset identifiers stay on the dissolved zone so a reviewer can see which asset set the limit.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="mn-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Three overlapping zones, one shared constraint</text>
+  <circle cx="190" cy="170" r="78" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6" opacity="0.5"/>
+  <circle cx="300" cy="150" r="66" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6" opacity="0.5"/>
+  <circle cx="256" cy="250" r="54" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.6" opacity="0.5"/>
+  <circle cx="190" cy="170" r="4" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <text x="190" y="162" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">120 MW</text>
+  <circle cx="300" cy="150" r="4" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <text x="300" y="142" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">80 MW</text>
+  <circle cx="256" cy="250" r="4" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <text x="256" y="242" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">45 MW</text>
+  <text x="250" y="336" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">three buffers dissolved into one zone</text>
+  <line x1="400" y1="200" x2="442" y2="200" stroke="currentColor" stroke-width="1.4" marker-end="url(#mn-arr)"/>
+  <rect x="454" y="96" width="226" height="84" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="567.0" y="119" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">sum()</text>
+  <text x="567.0" y="141" text-anchor="middle" font-size="16" fill="currentColor" font-weight="700">245 MW</text>
+  <text x="567.0" y="163" text-anchor="middle" font-size="10.5" fill="currentColor">capacity that is not there</text>
+  <rect x="454" y="236" width="226" height="84" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="567.0" y="259" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">min()</text>
+  <text x="567.0" y="281" text-anchor="middle" font-size="16" fill="currentColor" font-weight="700">45 MW</text>
+  <text x="567.0" y="303" text-anchor="middle" font-size="10.5" fill="currentColor">what the zone can deliver</text>
+  <rect x="700" y="96" width="214" height="65" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="807.0" y="117" text-anchor="middle" font-size="11.5" fill="currentColor">The 45 MW asset shares</text>
+  <text x="807.0" y="134" text-anchor="middle" font-size="11.5" fill="currentColor">the upstream transformer</text>
+  <text x="807.0" y="151" text-anchor="middle" font-size="11.5" fill="currentColor">that limits all three</text>
+  <rect x="700" y="236" width="214" height="65" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="807.0" y="257" text-anchor="middle" font-size="11.5" fill="currentColor">Keep contributing asset ids</text>
+  <text x="807.0" y="274" text-anchor="middle" font-size="11.5" fill="currentColor">on the dissolved zone so</text>
+  <text x="807.0" y="291" text-anchor="middle" font-size="11.5" fill="currentColor">a reviewer sees the binding one</text>
+</svg>
+
 ```python
 import pandas as pd
 from datetime import datetime, timezone
@@ -303,6 +377,55 @@ if __name__ == "__main__":
 ```
 
 The `target_epsg`, `reconciliation_rule`, and `audit_timestamp` columns are not decorative. They are the lineage that lets an interconnection study or permitting submission be independently re-run and arrive at the same surface — a capacity number without that provenance is a figure a reviewer has no basis to trust. For projection-zone selection and metric-degradation warnings consult the [GeoPandas projections guide](https://geopandas.org/en/stable/docs/user_guide/projections.html), and for datum-transformation parameters the [pyproj CRS documentation](https://pyproj4.github.io/pyproj/stable/api/crs/crs.html). The resulting surfaces feed directly into interconnection routing optimization, environmental constraint masking, and queue prioritization — turning static proximity maps into dynamic, compliance-ready capacity surfaces that accelerate renewable project deployment.
+
+
+## Frequently asked questions
+
+### Why scale the buffer radius by voltage class at all?
+
+Because interconnection reach genuinely scales with voltage: a 500 kV bulk node can serve a
+generator tens of kilometres away over a dedicated tie, while a 69 kV distribution tap cannot. A
+single radius applied to both simultaneously over-states the distribution asset and under-states the
+bulk one, and the resulting map looks uniform and defensible. The radius rule belongs in
+configuration with the thermal clamp beside it, so a mis-keyed rating cannot collapse a zone to
+nothing.
+
+### Should capacity zones be buffered around substations or along lines?
+
+Both, for different questions. A substation buffer answers "where can a generator interconnect at
+this node"; a line corridor buffer answers "where can a generator tap this circuit". Most screening
+workflows want the substation zones first because interconnection at an existing node is cheaper
+than a new tap, and the line corridors become relevant once the node zones are exhausted.
+
+### How often does a capacity surface need rebuilding?
+
+Whenever the queue changes, which in an active market is monthly. The headroom figure is
+rating minus existing load minus energised generation minus queued-ahead capacity, and the last term
+moves constantly. A surface built from a rating and an old queue snapshot is optimistic in exactly
+the corridors that are most contested, so the refresh cadence should follow the queue publication
+cadence rather than a convenient schedule.
+
+### What should the dissolved zone carry besides a capacity number?
+
+The contributing asset identifiers, the binding asset, the radius rule and thermal factors used, and
+the vintage of the queue snapshot. Without those, a reviewer cannot tell why a zone reports 45 MW,
+and the number is unusable in a study that has to be defended. The metadata is a few columns; the
+alternative is rebuilding the analysis to answer a single question.
+
+
+### Should the buffer be a circle or a service-territory shape?
+
+A circle is the right first approximation and the wrong final answer. Interconnection reach is not
+isotropic — it follows corridors, avoids water crossings, and stops at service-territory boundaries
+— so a production surface eventually clips the circular zone against the operating territory and any
+hard geographic barrier. Starting circular keeps the screen fast; clipping keeps it defensible.
+
+### What happens when two capacity surfaces from different vintages disagree?
+
+Prefer the newer one and record both. A surface is a snapshot of a queue as much as of a network, so
+two vintages disagreeing is the expected behaviour rather than a defect. What matters is that a
+study cites the vintage it used, because a reviewer comparing the study against a current surface
+will otherwise read normal queue movement as an error in the analysis.
 
 ## Related
 

@@ -12,10 +12,10 @@ eleventyExcludeFromCollections: false
     <h1>Python for Renewable Energy &amp; Grid GIS Automation</h1>
     <p class="home-hero__tag">{{ site.description }}</p>
     <p class="home-hero__intro">
-      Solar irradiance mapping, wind resource assessment, grid proximity analysis, site suitability scoring, compliance reporting, and batch pipeline sync — all built with reproducible, memory-aware Python. This site is a working library for energy analysts, GIS developers, project developers, and environmental technology teams who deploy spatial workflows to production rather than the desktop.
+      Solar irradiance mapping, wind resource assessment, grid proximity analysis, exclusion screening, least-cost interconnection routing, turbine layout, and audit-ready compliance reporting — all built with reproducible, memory-aware Python. This site is a working library for energy analysts, GIS developers, project developers, and environmental technology teams who deploy spatial workflows to production rather than the desktop.
     </p>
     <p class="home-hero__intro">
-      Each section walks through a deterministic pipeline stage: coordinate-reference governance, raster &amp; vector ingestion, validation gates, network topology, and audit-ready outputs. Code is annotated, tested in real workflows, and tuned for cloud-scale execution against multi-gigabyte energy datasets.
+      Each section walks through a deterministic pipeline stage: coordinate-reference governance, raster &amp; vector ingestion, validation gates, constraint and exclusion screening, network topology and routing, resource-to-energy conversion, and the containerised orchestration that runs the whole thing unattended. Code is annotated, tested in real workflows, and tuned for cloud-scale execution against multi-gigabyte energy datasets.
     </p>
     <div class="home-ctas">
       {% for item in site.nav %}
@@ -37,7 +37,7 @@ eleventyExcludeFromCollections: false
   <div class="container">
     <h2>What you’ll find inside</h2>
     <p class="home-section__lede">
-      Three deeply linked content tracks — each starting with an architectural overview and branching into focused, reproducible patterns: PV yield simulation, interconnection queue screening, terrain shading, cloud data ingestion, and quick-reference tables for projections, spatial indexes, and resampling kernels.
+      Three deeply linked content tracks — each starting with an architectural overview and branching into focused, reproducible patterns: PV yield simulation, interconnection queue screening, wetland and floodplain exclusion, least-cost corridor routing, wake-loss estimation, terrain shading, cloud data ingestion, and quick-reference tables for projections, spatial indexes, and resampling kernels.
     </p>
     <ul class="home-cards" style="list-style:none; padding:0;">
       {% for item in site.nav %}
@@ -56,6 +56,46 @@ eleventyExcludeFromCollections: false
             </ul>
           {% endif %}
           <a class="home-card__more" href="{{ site.url }}{{ item.url }}">Open section {{ icon('arrow', 'currentColor') }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="home-section" style="padding-top:0;">
+  <div class="container">
+    <h2>Start here</h2>
+    <p class="home-section__lede">
+      Four workflows added in this round, each one a stage a production siting pipeline needs and most
+      screening scripts skip.
+    </p>
+    <ul class="home-cards" style="list-style:none; padding:0;">
+      {% set picks = [
+        { "url": "/core-energy-gis-data-spatial-fundamentals/environmental-constraint-and-exclusion-screening/",
+          "title": "Environmental Constraint &amp; Exclusion Screening",
+          "desc": "Union the constraint layers once, measure in an equal-area frame, and publish an accounting that reconciles.",
+          "color": "#345B8B", "icon": "globe" },
+        { "url": "/grid-infrastructure-network-proximity-analysis/grid-routing-and-least-cost-path-analysis/",
+          "title": "Grid Routing &amp; Least-Cost Path Analysis",
+          "desc": "Turn a straight-line interconnection distance into a routable corridor with a cost surface you can defend.",
+          "color": "#3D8B5F", "icon": "grid" },
+        { "url": "/solar-wind-resource-modeling-workflows/wind-farm-layout-and-wake-modeling/",
+          "title": "Wind Farm Layout &amp; Wake Modeling",
+          "desc": "Place turbines under real spacing constraints and price the energy the array takes from itself.",
+          "color": "#F4A261", "icon": "sun" },
+        { "url": "/core-energy-gis-data-spatial-fundamentals/spatial-pipeline-orchestration-and-deployment/",
+          "title": "Spatial Pipeline Orchestration &amp; Deployment",
+          "desc": "Pinned GDAL and PROJ, idempotent partitions, and the four log fields that catch a spatial regression.",
+          "color": "#345B8B", "icon": "globe" }
+      ] %}
+      {% for p in picks %}
+        <li class="home-card" style="--card-c: {{ p.color }};">
+          <a class="home-card__head" href="{{ site.url }}{{ p.url }}" style="text-decoration:none; color:inherit;">
+            {{ icon(p.icon, p.color) }}
+            <h3>{{ p.title | safe }}</h3>
+          </a>
+          <p>{{ p.desc | safe }}</p>
+          <a class="home-card__more" href="{{ site.url }}{{ p.url }}">Read the workflow {{ icon('arrow', 'currentColor') }}</a>
         </li>
       {% endfor %}
     </ul>

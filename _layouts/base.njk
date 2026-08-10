@@ -1,6 +1,21 @@
 <!doctype html>
 <html lang="{{ site.lang }}">
 <head>
+<meta name="color-scheme" content="light dark">
+<script>
+/* Theme bootstrap: a stored choice wins, otherwise the OS preference. Runs
+   before first paint so the page never flashes the wrong theme. */
+(function () {
+  try {
+    var stored = localStorage.getItem("reg-theme");
+    var dark = stored ? stored === "dark"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
+})();
+</script>
 {% include "head.njk" %}
 </head>
 <body class="{{ bodyClass or '' }}">

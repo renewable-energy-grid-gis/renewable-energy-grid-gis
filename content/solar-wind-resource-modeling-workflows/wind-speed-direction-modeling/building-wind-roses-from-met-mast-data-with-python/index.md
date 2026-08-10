@@ -24,6 +24,7 @@ Four compounding causes account for nearly every rotated or mis-normalised rose,
 4. **Unequal record counts.** Two masts, or two seasons of one mast, almost never share the same number of valid records. Raw tallies are therefore incomparable — only a table normalised to frequency (summing to one) can be merged, averaged, or plotted on a common scale.
 
 <svg viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four wind-rose binning failures mapped to their fixes. First, bearings binned as plain numbers so 350 and 10 degrees average to 180; the fix bins on a sector index after a half-sector shift. Second, sector edges straddle North and split the zero-degree sector in two; the fix uses a half-sector offset so North is one contiguous bin. Third, calm periods and 0-or-360 sentinels fill a direction sector; the fix pulls calms below a threshold out and normalises 360 degrees to 0. Fourth, unequal record counts make tallies incomparable; the fix divides by total valid records so frequencies sum to one." style="width:100%;max-width:900px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="900" height="500"/>
   <title>Wind-rose binning failures mapped to their fixes</title>
   <desc>Two columns of four rows. The left column lists each failure cause; the right column lists the corresponding correct handling; an arrow runs from each cause to its fix. Row one: bearings binned as plain numbers, so 350 and 10 average to 180, is fixed by binning on a sector index after a half-sector shift. Row two: sector edges straddling North split the zero-degree sector into two half-bins, fixed by a half-sector offset that makes North a single contiguous bin. Row three: calm periods and 0-or-360 vane sentinels contaminate a direction sector, fixed by pulling calms below a threshold out and normalising 360 to 0. Row four: unequal record counts make raw tallies incomparable, fixed by dividing by total valid records so the frequencies sum to one.</desc>
   <defs>
@@ -138,6 +139,89 @@ Coverage is checked against the mast's nominal sampling cadence (10-minute recor
 
 The corrected function applies the half-sector offset, separates calms onto their own tally, clips extreme gusts into the top speed bin so nothing is dropped, and normalises by *all* valid records so the directional frequencies and the calm frequency together sum to one. Parameter choices are justified for wind assessment: `n_sectors=16` (22.5° sectors) is the industry default; the speed edges track a turbine power-curve's operating regions; and `calm_threshold_ms` matches typical anemometer cut-in.
 
+<svg viewBox="0 0 940 452" role="img" aria-label="A wind rose for a met mast year, drawn as frequency by direction sector and banded by speed. The prevailing direction is west-south-west, which carries 21 percent of the hours; the north-east sectors carry under 4 percent each. Because energy scales with the cube of speed, the west-south-west sector carries a larger share of the energy than of the hours — which is what decides row orientation in a layout, not the frequency alone." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Frequency by direction sector, banded by speed</title>
+  <desc>A polar wind rose with sixteen direction sectors. Each sector is drawn as a stacked wedge with three speed bands: under 5 metres per second, 5 to 10, and above 10. The west-south-west sector is the longest at 21 percent of hours and carries the largest above-10 band; west and south-west follow at 14 and 12 percent. The north-east through east sectors are all under 4 percent. Range rings are labelled at 5, 10, 15 and 20 percent, and a legend gives the three speed bands.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="452"/>
+  <defs><marker id="wrose-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One met-mast year, 16 sectors, three speed bands</text>
+  <circle cx="300" cy="236" r="35.0" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.2"/>
+  <text x="305" y="205.0" text-anchor="start" font-size="9.5" fill="currentColor" opacity="0.65">5%</text>
+  <circle cx="300" cy="236" r="70.0" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.2"/>
+  <text x="305" y="170.0" text-anchor="start" font-size="9.5" fill="currentColor" opacity="0.65">10%</text>
+  <circle cx="300" cy="236" r="105.0" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.2"/>
+  <text x="305" y="135.0" text-anchor="start" font-size="9.5" fill="currentColor" opacity="0.65">15%</text>
+  <circle cx="300" cy="236" r="140.0" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.2"/>
+  <text x="305" y="100.0" text-anchor="start" font-size="9.5" fill="currentColor" opacity="0.65">20%</text>
+  <path d="M300.0,236.0 L298.5,226.7 L301.5,226.7 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M298.5,226.7 L297.3,218.7 L302.7,218.7 L301.5,226.7 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M297.3,218.7 L296.5,213.9 L303.5,213.9 L302.7,218.7 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L301.9,228.0 L304.3,229.0 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M301.9,228.0 L303.6,221.1 L308.0,223.0 L304.3,229.0 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M303.6,221.1 L304.6,216.9 L310.2,219.3 L308.0,223.0 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L304.1,230.3 L305.7,231.9 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M304.1,230.3 L307.7,225.4 L310.6,228.3 L305.7,231.9 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M307.7,225.4 L309.9,222.4 L313.6,226.1 L310.6,228.3 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L305.3,232.8 L306.0,234.6 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M305.3,232.8 L309.8,230.0 L311.1,233.3 L306.0,234.6 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M309.8,230.0 L312.5,228.3 L314.3,232.6 L311.1,233.3 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L307.5,234.8 L307.5,237.2 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M307.5,234.8 L314.0,233.8 L314.0,238.2 L307.5,237.2 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M314.0,233.8 L318.0,233.2 L318.0,238.8 L314.0,238.2 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L309.7,238.3 L308.5,241.2 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M309.7,238.3 L318.1,240.3 L315.8,245.7 L308.5,241.2 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M318.1,240.3 L323.1,241.6 L320.3,248.4 L315.8,245.7 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L309.8,243.1 L307.1,245.8 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M309.8,243.1 L318.1,249.2 L313.2,254.1 L307.1,245.8 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M318.1,249.2 L323.2,252.9 L316.9,259.2 L313.2,254.1 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L308.0,249.0 L303.6,250.9 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M308.0,249.0 L314.8,260.2 L306.6,263.6 L303.6,250.9 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M314.8,260.2 L319.0,267.0 L308.5,271.4 L306.6,263.6 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L303.1,255.7 L296.9,255.7 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M303.1,255.7 L305.8,272.7 L294.2,272.7 L296.9,255.7 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M305.8,272.7 L307.4,283.0 L292.6,283.0 L294.2,272.7 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L293.5,262.9 L285.6,259.6 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M293.5,262.9 L288.0,285.9 L273.2,279.8 L285.6,259.6 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M288.0,285.9 L284.6,300.0 L265.6,292.1 L273.2,279.8 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L279.1,264.8 L271.2,256.9 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M279.1,264.8 L261.2,289.4 L246.6,274.8 L271.2,256.9 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M261.2,289.4 L250.2,304.5 L231.5,285.8 L246.6,274.8 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L247.4,268.3 L240.0,250.4 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M247.4,268.3 L202.2,295.9 L188.5,262.8 L240.0,250.4 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M202.2,295.9 L174.7,312.8 L157.1,270.3 L188.5,262.8 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L258.8,242.5 L258.8,229.5 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M258.8,242.5 L223.4,248.1 L223.4,223.9 L258.8,229.5 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M223.4,248.1 L201.8,251.5 L201.8,220.5 L223.4,223.9 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L281.7,231.6 L284.0,226.2 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M281.7,231.6 L266.0,227.8 L270.2,217.7 L284.0,226.2 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M266.0,227.8 L256.4,225.5 L261.8,212.6 L270.2,217.7 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L290.2,228.9 L292.9,226.2 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M290.2,228.9 L281.9,222.8 L286.8,217.9 L292.9,226.2 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M281.9,222.8 L276.8,219.1 L283.1,212.8 L286.8,217.9 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <path d="M300.0,236.0 L295.1,228.0 L297.8,226.9 L300.0,236.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1"/>
+  <path d="M295.1,228.0 L290.9,221.1 L295.9,219.0 L297.8,226.9 Z" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1"/>
+  <path d="M290.9,221.1 L288.3,216.9 L294.8,214.2 L295.9,219.0 Z" fill="#FFE3BE" stroke="#F4A261" stroke-width="1"/>
+  <text x="300.0" y="64.0" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">N</text>
+  <text x="476.0" y="240.0" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">E</text>
+  <text x="300.0" y="416.0" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">S</text>
+  <text x="124.0" y="240.00000000000003" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">W</text>
+  <text x="300" y="430" text-anchor="middle" font-size="11.5" fill="#2C6E8F" font-weight="700">WSW carries 21% of the hours</text>
+  <rect x="560" y="96" width="18" height="14" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="588" y="108" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">under 5 m/s</text>
+  <rect x="560" y="122" width="18" height="14" rx="3" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="588" y="134" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">5 – 10 m/s</text>
+  <rect x="560" y="148" width="18" height="14" rx="3" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="588" y="160" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.9">above 10 m/s</text>
+  <rect x="560" y="190" width="356" height="73" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="738.0" y="212" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Energy share ≠ frequency share</text>
+  <text x="738.0" y="231" text-anchor="middle" font-size="11.5" fill="currentColor">WSW is 21% of hours and 34% of energy</text>
+  <text x="738.0" y="250" text-anchor="middle" font-size="11.5" fill="currentColor">because its above-10 band is the largest</text>
+  <rect x="560" y="296" width="356" height="73" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="738.0" y="318" text-anchor="middle" font-size="11.5" fill="currentColor">Row orientation follows the energy rose,</text>
+  <text x="738.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">not the frequency rose — the two differ</text>
+  <text x="738.0" y="356" text-anchor="middle" font-size="11.5" fill="currentColor">most at sites with a bimodal regime</text>
+</svg>
+
 ```python
 def build_wind_rose(
     df: pd.DataFrame,
@@ -190,6 +274,92 @@ The returned `frequency` matrix is a ready-to-render polar rose: row `k` is the 
 ## Fallback routing & performance tuning
 
 For sparse masts, multi-mast campaigns, or CI/CD runs, layer these strategies on top of the core function.
+
+<svg viewBox="0 0 940 396" role="img" aria-label="How the sector count changes what a rose can show. Eight sectors of 45 degrees smear the prevailing direction across a span wider than most wake effects care about; sixteen sectors of 22.5 degrees is the industry convention and resolves a bimodal regime; thirty-six sectors of 10 degrees resolves terrain channelling but needs enough records per sector to be stable — at 8,760 hours that is only 243 per sector before any filtering." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Eight, sixteen or thirty-six sectors — and the records each leaves</title>
+  <desc>Three miniature roses of the same data at three sector counts. The eight-sector rose has 45 degree wedges and about 1,095 records per sector; the prevailing direction is a single broad wedge. The sixteen-sector rose has 22.5 degree wedges and about 548 records per sector, and a secondary mode becomes visible. The thirty-six-sector rose has 10 degree wedges and about 243 records per sector, resolving a narrow channelled flow but with visibly noisier sector-to-sector variation.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="sc2-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The same year at three sector counts</text>
+  <text x="170" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">8 sectors · 45° wide</text>
+  <text x="170" y="300" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">1095 records per sector</text>
+  <circle cx="170" cy="176" r="46.0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="170" cy="176" r="92.0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+  <path d="M170.0,176.0 L167.0,167.5 L173.0,167.5 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L173.8,168.1 L177.9,172.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L178.8,172.9 L178.8,179.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L177.9,179.8 L173.8,183.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L179.8,203.9 L160.2,203.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L138.1,242.4 L103.6,207.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L112.6,196.2 L112.6,155.8 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M170.0,176.0 L158.7,170.6 L164.6,164.7 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <text x="170" y="292" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">too coarse to site rows</text>
+  <text x="470" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">16 sectors · 22° wide</text>
+  <text x="470" y="300" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">547 records per sector</text>
+  <circle cx="470" cy="176" r="46.0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="470" cy="176" r="92.0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+  <path d="M470.0,176.0 L468.5,167.4 L471.5,167.4 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L472.0,167.1 L474.9,168.3 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L475.0,168.9 L477.1,171.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L477.4,171.3 L478.5,174.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L479.0,174.5 L479.0,177.5 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L479.3,178.1 L478.1,181.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L477.2,181.1 L475.1,183.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L475.4,184.5 L472.2,185.8 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L475.0,205.5 L465.0,205.5 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L454.4,244.4 L432.6,235.4 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L426.3,237.7 L408.3,219.7 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L396.6,222.2 L385.5,195.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L403.0,187.4 L403.0,164.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L443.8,170.0 L447.2,161.7 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L459.3,168.4 L462.4,165.3 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M470.0,176.0 L465.1,168.2 L467.9,167.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <text x="470" y="292" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">the working convention</text>
+  <text x="770" y="66" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">36 sectors · 10° wide</text>
+  <text x="770" y="300" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">243 records per sector</text>
+  <circle cx="770" cy="176" r="46.0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="770" cy="176" r="92.0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+  <path d="M770.0,176.0 L769.4,167.9 L770.6,167.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L770.8,168.0 L772.0,168.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L772.3,167.7 L773.5,168.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L774.4,166.8 L775.7,167.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L774.8,169.3 L775.7,170.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L776.8,169.4 L777.7,170.5 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L778.0,170.6 L778.7,171.8 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L778.0,172.4 L778.5,173.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L779.1,173.7 L779.3,175.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L777.8,175.4 L777.8,176.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L777.8,176.8 L777.6,177.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L778.0,178.2 L777.5,179.4 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L778.8,180.2 L778.1,181.5 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L777.3,181.2 L776.4,182.3 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L776.1,182.2 L775.1,183.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L775.5,184.1 L774.3,184.8 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L774.5,185.9 L772.9,186.4 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L773.8,190.8 L771.5,191.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L772.4,208.3 L767.6,208.3 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L764.9,227.6 L757.2,226.2 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L754.1,232.5 L745.9,229.4 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L738.8,240.8 L729.5,235.4 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L727.4,235.3 L719.0,228.3 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L706.7,237.8 L698.1,227.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L694.0,227.8 L687.1,215.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L696.2,209.3 L692.0,197.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L680.9,198.7 L678.5,185.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L714.2,180.2 L714.2,171.8 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L724.7,171.5 L725.9,164.8 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L736.9,166.7 L738.7,161.9 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L753.5,168.0 L754.9,165.7 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L758.3,167.6 L759.7,166.0 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L763.4,169.2 L764.5,168.3 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L764.1,167.4 L765.5,166.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L765.8,166.7 L767.2,166.1 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <path d="M770.0,176.0 L767.7,166.8 L769.1,166.6 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="0.9"/>
+  <text x="770" y="292" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">resolves channelling, noisier</text>
+  <rect x="40" y="322" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">Sector count is a statistics decision, not a drawing one: below roughly 300 records a sector, the rose</text>
+  <text x="474.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">starts describing the sample rather than the site.</text>
+</svg>
 
 - **Tune the sector count to record depth.** Drop to 12 sectors (30°) when a mast has only a few thousand valid records, so each sector keeps a statistically meaningful count; reserve 36 sectors (10°) for multi-year records where the tails are populated. Over-sectoring a thin dataset produces a spiky, unstable rose.
 - **Match the calm threshold to the instrument.** Align `calm_threshold_ms` to the anemometer cut-in and vane stall speed (commonly 0.5–1.0 m/s) rather than a round number, and always carry `calm_frequency` into the output metadata — a rose that hides its calm fraction is not auditable.

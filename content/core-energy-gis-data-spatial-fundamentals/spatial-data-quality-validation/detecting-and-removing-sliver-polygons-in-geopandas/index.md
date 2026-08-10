@@ -29,6 +29,7 @@ $$ \mathrm{PP} = \frac{4\pi A}{P^{2}} $$
 where $A$ is the polygon area and $P$ its perimeter. A perfect circle scores $\mathrm{PP} = 1$; a long thin sliver scores near $0$. Combining a low compactness score with an absolute area ceiling isolates true artefacts while sparing small legitimate features, because a compact 300 m² parcel scores high on $\mathrm{PP}$ even though its area is tiny.
 
 <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cause-to-fix map for sliver polygons. Three causes on the left — vertex misregistration between overlaid layers, coordinate precision and rounding, and absence of a geometric filter after the overlay — each arrow into a two-part detector in the centre that computes area in square metres and the Polsby-Popper thinness score. The detector feeds a decision gate testing whether area is below the threshold and thinness is below the compactness limit. Sliver-classified features route right to a removal stage that either drops them or dissolves them into the largest shared-edge neighbour; non-slivers pass through unchanged. Both paths converge on a clean, area-preserved GeoDataFrame." style="width:100%;max-width:880px;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="880" height="340"/>
   <title>Sliver causes mapped to a thinness-and-area detector, a removal gate, and an area-preserved output</title>
   <desc>Three cause boxes on the left — vertex misregistration between overlaid layers, coordinate precision and rounding, and no geometric filter after the overlay — each arrow into a central detector node that computes area in square metres and the Polsby-Popper compactness score. The detector feeds a diamond gate testing whether area is below threshold and compactness below the thinness limit. A "yes" branch routes right to a removal node that drops the feature or dissolves it into its largest shared-edge neighbour; a "no" branch keeps the feature. Both merge into a highlighted output node: a clean, area-preserved GeoDataFrame.</desc>
   <defs>
@@ -81,6 +82,36 @@ where $A$ is the polygon area and $P$ its perimeter. A perfect circle scores $\m
 ## Pre-flight validation
 
 Run the detector *before* any removal so the decision is auditable and the thresholds can be tuned against real numbers. Work in an equal-area metric CRS — EPSG:5070 (NAD83 / Conus Albers) for contiguous-US energy work, or the local UTM zone such as EPSG:32610 for a single-region study — so that `area_m2` is genuinely square metres and a metre-scale sliver is comparable across the layer. Computing area or perimeter in geographic EPSG:4326 returns degree-based numbers that make the thinness test meaningless.
+
+<svg viewBox="0 0 940 396" role="img" aria-label="The Polsby-Popper compactness score, four pi times area over perimeter squared, computed for four shapes a parcel overlay actually produces. A circle scores 1.00, a square 0.79, a small but legitimate 20 by 30 metre parcel 0.96, and a 400 by 0.8 metre overlay sliver 0.0125. Area alone cannot separate the last two — the sliver is larger than nothing and the small parcel is small — but compactness separates them by a factor of 77." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Compactness, not area, is what identifies a sliver</title>
+  <desc>Four shapes drawn to a common scale with their measurements: a circle of radius 30 metres with compactness 1.00, a 40 metre square with compactness 0.79, a legitimate 20 by 30 metre parcel with compactness 0.96, and a 400 by 0.8 metre overlay sliver with compactness 0.0125. Below each, its area and perimeter. A note gives the working gate: compactness below 0.05 and area below 50 square metres, which removes slivers while sparing the small parcel.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="pp-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Polsby-Popper: 4πA ÷ P² — a shape test that area cannot do</text>
+  <circle cx="146" cy="148" r="52" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="146" y="232" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">circle r=30 m</text>
+  <text x="146" y="252" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">A = 2 827 m² · P = 188.5 m</text>
+  <text x="146" y="280" text-anchor="middle" font-size="13" fill="#1F5C3A" font-weight="700">PP = 0.9999</text>
+  <rect x="320" y="102" width="92" height="92" rx="2" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="366" y="232" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">square 40 m</text>
+  <text x="366" y="252" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">A = 1 600 m² · P = 160.0 m</text>
+  <text x="366" y="280" text-anchor="middle" font-size="13" fill="#1F5C3A" font-weight="700">PP = 0.7854</text>
+  <rect x="552" y="112" width="68" height="72" rx="2" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6"/>
+  <text x="586" y="232" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">parcel 20 × 30 m</text>
+  <text x="586" y="252" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">A = 600 m² · P = 100.0 m</text>
+  <text x="586" y="280" text-anchor="middle" font-size="13" fill="#1F5C3A" font-weight="700">PP = 0.754</text>
+  <rect x="710" y="145" width="192" height="6" rx="1" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="806" y="232" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">sliver 400 × 0.8 m</text>
+  <text x="806" y="252" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">A = 320 m² · P = 801.6 m</text>
+  <text x="806" y="280" text-anchor="middle" font-size="13" fill="#7A4A1A" font-weight="700">PP = 0.0063</text>
+  <rect x="40" y="306" width="428" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="254.0" y="327" text-anchor="middle" font-size="11.5" fill="currentColor">A pure area filter drops the 600 m² parcel</text>
+  <text x="254.0" y="344" text-anchor="middle" font-size="11.5" fill="currentColor">and keeps the 320 m² sliver</text>
+  <rect x="492" y="306" width="428" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="706.0" y="327" text-anchor="middle" font-size="11.5" fill="currentColor">The working gate: PP &lt; 0.05 AND area &lt; 50 m²</text>
+  <text x="706.0" y="344" text-anchor="middle" font-size="11.5" fill="currentColor">— both conditions, never either alone</text>
+</svg>
 
 The detector below annotates every feature with its area, its Polsby-Popper score, and a boolean `is_sliver`, without deleting anything. That separation is deliberate: it lets a reviewer inspect the flagged set before it is destroyed.
 
@@ -178,6 +209,35 @@ For national parcel layers or CI/CD runs, layer these strategies onto the core f
 ## Downstream validation
 
 Before the cleaned layer feeds a siting model or a [regulatory boundary overlay](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/regulatory-boundary-mapping/), gate it with a CI/CD assertion that proves the removal did its job without corrupting the total area. This is the check that catches a threshold regression or a dissolve that accidentally dropped real land.
+
+<svg viewBox="0 0 940 356" role="img" aria-label="The audit that proves a sliver removal did not lose real land. Before removal the overlay holds 4,182 features totalling 12,847.6 hectares. After removing 261 pieces that fail both the compactness and area gates, 3,921 features remain totalling 12,847.1 hectares — a loss of 0.52 hectares, or 0.004 percent, all of it in pieces thinner than a metre. A removal that moves the total by more than a tolerance is a bug, not a clean-up." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Sliver removal, audited by area conservation</title>
+  <desc>A before-and-after comparison. Before: 4,182 features and 12,847.60 hectares. Removed: 261 features and 0.52 hectares. After: 3,921 features and 12,847.08 hectares. A bar shows the removed area as a barely visible fraction of the total, annotated as 0.004 percent. A gate box states the assertion a CI run should make: the absolute area difference must stay under 0.01 percent of the original, otherwise the filter is eating real parcels and the build fails.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="356"/>
+  <defs><marker id="ac-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Prove the clean-up removed artefacts, not land</text>
+  <rect x="40" y="66" width="268" height="78" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="174.0" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">before</text>
+  <text x="174.0" y="109" text-anchor="middle" font-size="12.5" fill="currentColor">4 182 features</text>
+  <text x="174.0" y="129" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">12 847.60 ha</text>
+  <line x1="316" y1="118" x2="350" y2="118" stroke="currentColor" stroke-width="1.4" marker-end="url(#ac-arr)"/>
+  <rect x="358" y="66" width="224" height="78" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="470.0" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">removed</text>
+  <text x="470.0" y="109" text-anchor="middle" font-size="12.5" fill="currentColor">261 features</text>
+  <text x="470.0" y="129" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">0.52 ha</text>
+  <line x1="590" y1="118" x2="624" y2="118" stroke="currentColor" stroke-width="1.4" marker-end="url(#ac-arr)"/>
+  <rect x="632" y="66" width="268" height="78" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="766.0" y="89" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">after</text>
+  <text x="766.0" y="109" text-anchor="middle" font-size="12.5" fill="currentColor">3 921 features</text>
+  <text x="766.0" y="129" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">12 847.08 ha</text>
+  <text x="40" y="202" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">removed area as a share of the total</text>
+  <rect x="40" y="212" width="860" height="26" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <rect x="40" y="212" width="6" height="26" rx="2" fill="#F4A261" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="60" y="230" text-anchor="start" font-size="11.5" fill="currentColor">0.004% — every piece thinner than one metre</text>
+  <rect x="40" y="262" width="860" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="470.0" y="283" text-anchor="middle" font-size="11.5" fill="currentColor">CI gate: assert abs(area_after − area_before) / area_before &lt; 1e-4 — a filter that moves the total</text>
+  <text x="470.0" y="300" text-anchor="middle" font-size="11.5" fill="currentColor">by more than that is removing parcels, and the build should fail rather than publish.</text>
+</svg>
 
 ```python
 import numpy as np

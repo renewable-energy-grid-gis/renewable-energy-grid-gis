@@ -28,6 +28,7 @@ Four independent causes account for nearly every mis-computed horizon profile, a
 4. **Ignoring earth curvature at range.** Far-shading ridges sit 5–20 km out. Over that distance the earth's curvature drops the far terrain below a flat-earth line of sight by $d^2/2R$ — roughly 3.5 m at 10 km — and atmospheric refraction bends the ray back by ~13%. Omit the correction and distant ridges are reported higher than they truly appear.
 
 <svg viewBox="0 0 900 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four root causes of a wrong horizon profile mapped to fixes. Geographic CRS maps to reproject to EPSG 32610 for true metric runs; ellipsoidal versus orthometric height mismatch maps to sampling the site elevation from the DEM itself; a coarse DEM smoothing ridgelines maps to a fine DEM plus a fine step so crests are resolved; and ignoring earth curvature maps to subtracting a curvature and refraction drop before the arctangent. All four fixes converge on a validated horizon profile array." style="width:100%;max-width:900px;height:auto;font-family:inherit;">
+  <rect class="svg-bg" x="0" y="0" width="900" height="470"/>
   <title>Horizon-profile failure causes mapped to their fixes</title>
   <desc>Four warning cause nodes on the left each connect to a fix node in the middle: geographic CRS to reproject to a metric EPSG; ellipsoidal versus orthometric height to reading the site elevation from the DEM; coarse DEM to a fine DEM and fine ray step; and no curvature correction to subtracting the curvature-and-refraction drop. All four fix nodes feed a single highlighted success node, a validated horizon-angle profile.</desc>
   <defs>
@@ -153,6 +154,43 @@ def preflight_horizon_inputs(src: rasterio.DatasetReader,
 
 The corrected profiler reads `z_site` from the DEM, marches each azimuth ray in metric steps no coarser than the cell size, samples the far terrain with bilinear interpolation so a ridge crest is not stepped over, subtracts the earth-curvature-and-refraction drop, and returns the maximum elevation angle per bearing. The curvature term uses an effective radius $R_e = R / (1 - k)$ with refraction coefficient $k = 0.13$, the standard value for visible-band terrestrial sightlines, so the corrected rise is:
 
+<svg viewBox="0 0 940 420" role="img" aria-label="A horizon profile for a valley site, drawn as the horizon elevation angle at each azimuth. The southern arc — which is where the winter sun sits in the northern hemisphere — is blocked to between 8 and 14 degrees by the opposing valley wall, while the northern arc is nearly open. The consequence is asymmetric: the same profile costs almost nothing in June and removes a large share of December." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Horizon elevation angle by azimuth for a valley site</title>
+  <desc>A polar plot with azimuth around the circle from north at the top through east, south and west, and horizon elevation angle on the radius from 0 to 20 degrees. The profile traces a low horizon of 2 to 4 degrees across the northern arc, rising through the east and west to a blocked southern arc of 8 to 14 degrees produced by the opposing valley wall. Two reference arcs mark the solar elevation at solar noon in June and December for the latitude, showing that the December sun path passes below the blocked southern horizon while the June path clears it.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="420"/>
+  <defs><marker id="hp-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The blocked arc is the one the winter sun uses</text>
+  <circle cx="300" cy="232" r="37.5" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.22"/>
+  <text x="306" y="198.5" text-anchor="start" font-size="10" fill="currentColor" opacity="0.7">5°</text>
+  <circle cx="300" cy="232" r="75.0" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.22"/>
+  <text x="306" y="161.0" text-anchor="start" font-size="10" fill="currentColor" opacity="0.7">10°</text>
+  <circle cx="300" cy="232" r="112.5" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.22"/>
+  <text x="306" y="123.5" text-anchor="start" font-size="10" fill="currentColor" opacity="0.7">15°</text>
+  <circle cx="300" cy="232" r="150.0" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.22"/>
+  <text x="306" y="86.0" text-anchor="start" font-size="10" fill="currentColor" opacity="0.7">20°</text>
+  <line x1="300" y1="232" x2="300.0" y2="82.0" stroke="currentColor" stroke-width="0.9" opacity="0.25"/>
+  <text x="300.0" y="68.0" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">N</text>
+  <line x1="300" y1="232" x2="450.0" y2="232.0" stroke="currentColor" stroke-width="0.9" opacity="0.25"/>
+  <text x="468.0" y="236.0" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">E</text>
+  <line x1="300" y1="232" x2="300.0" y2="382.0" stroke="currentColor" stroke-width="0.9" opacity="0.25"/>
+  <text x="300.0" y="404.0" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">S</text>
+  <line x1="300" y1="232" x2="150.0" y2="232.00000000000003" stroke="currentColor" stroke-width="0.9" opacity="0.25"/>
+  <text x="132.0" y="236.00000000000003" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">W</text>
+  <path d="M300.0,209.5 L301.2,209.5 L302.4,209.6 L303.5,209.8 L304.7,210.0 L305.8,210.3 L307.0,210.6 L308.1,211.0 L309.2,211.4 L310.2,211.9 L311.3,212.5 L312.3,213.1 L313.2,213.8 L314.2,214.5 L315.1,215.2 L316.0,216.0 L316.8,216.9 L317.6,217.7 L318.4,218.7 L319.1,219.6 L319.8,220.6 L320.4,221.6 L321.0,222.6 L321.6,223.7 L322.2,224.8 L322.7,225.9 L323.2,227.1 L323.7,228.3 L324.1,229.5 L324.6,230.7 L325.1,232.0 L329.8,233.6 L333.3,235.5 L336.5,237.8 L339.4,240.4 L342.1,243.3 L344.6,246.5 L346.7,249.9 L348.7,253.7 L350.4,257.7 L351.7,261.9 L352.8,266.3 L353.6,270.9 L354.0,275.7 L354.0,280.6 L353.6,285.6 L352.8,290.6 L351.6,295.7 L349.9,300.7 L347.8,305.6 L345.2,310.3 L342.2,314.9 L338.8,319.1 L334.9,323.0 L330.7,326.6 L326.2,329.6 L321.3,332.2 L316.2,334.3 L310.9,335.8 L305.5,336.7 L300.0,337.0 L294.5,336.7 L289.1,335.8 L283.8,334.3 L278.7,332.2 L273.8,329.6 L269.3,326.6 L265.1,323.0 L261.2,319.1 L257.8,314.9 L254.8,310.3 L252.2,305.6 L250.1,300.7 L248.4,295.7 L247.2,290.6 L246.4,285.6 L246.0,280.6 L246.0,275.7 L246.4,270.9 L247.2,266.3 L248.3,261.9 L249.6,257.7 L251.3,253.7 L253.3,249.9 L255.4,246.5 L257.9,243.3 L260.6,240.4 L263.5,237.8 L266.7,235.5 L270.2,233.6 L274.9,232.0 L275.4,230.7 L275.9,229.5 L276.3,228.3 L276.8,227.1 L277.3,225.9 L277.8,224.8 L278.4,223.7 L279.0,222.6 L279.6,221.6 L280.2,220.6 L280.9,219.6 L281.6,218.7 L282.4,217.7 L283.2,216.9 L284.0,216.0 L284.9,215.2 L285.8,214.5 L286.8,213.8 L287.7,213.1 L288.7,212.5 L289.8,211.9 L290.8,211.4 L291.9,211.0 L293.0,210.6 L294.2,210.3 L295.3,210.0 L296.5,209.8 L297.6,209.6 L298.8,209.5 L300.0,209.5 Z" fill="#FFE3BE" fill-opacity="0.6" stroke="#F4A261" stroke-width="2.2"/>
+  <text x="300" y="340.0" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">blocked 8–14°</text>
+  <text x="300" y="181.0" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">open 2–4°</text>
+  <rect x="520" y="90" width="388" height="73" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="714.0" y="112" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">December solar noon elevation 27°</text>
+  <text x="714.0" y="131" text-anchor="middle" font-size="11.5" fill="currentColor">sun rises above the 14° southern horizon</text>
+  <text x="714.0" y="150" text-anchor="middle" font-size="11.5" fill="currentColor">only from 09:40 to 14:20 — 4.7 h of sun</text>
+  <rect x="520" y="210" width="388" height="54" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="714.0" y="232" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">June solar noon elevation 73°</text>
+  <text x="714.0" y="251" text-anchor="middle" font-size="11.5" fill="currentColor">the same horizon costs under 1% of the day</text>
+  <rect x="520" y="310" width="388" height="54" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="714.0" y="332" text-anchor="middle" font-size="11.5" fill="currentColor">Annual shading loss 6.2% — of which</text>
+  <text x="714.0" y="351" text-anchor="middle" font-size="11.5" fill="currentColor">4.8 points fall in November to February</text>
+</svg>
+
 $$ h(\theta) = \max_{d}\; \arctan\!\left(\frac{z_{\text{terrain}}(d,\theta) - z_{\text{site}} - \dfrac{d^{2}}{2R_e}}{d}\right) $$
 
 Parameters are justified for far-shading: `azimuth_step_deg=1.0` gives a 360-point skyline dense enough for a solar-position lookup, `max_distance_m=15000` captures ridges that still subtend a meaningful angle, and `step_m` defaults to the DEM cell size so no sample skips a one-cell crest.
@@ -222,6 +260,55 @@ For portfolio-scale runs, batching many sites against one large DEM, or handling
 ## Downstream validation
 
 Before a horizon profile feeds a yield model, gate it with an assertion function suitable for a CI/CD pipeline. This catches the silent faults the profiler itself will not raise — out-of-range angles from a datum splice, an incomplete azimuth sweep, or a non-monotone sampling grid that would misalign a solar-position lookup:
+
+<svg viewBox="0 0 940 396" role="img" aria-label="How annual shading loss scales with a uniform southern horizon, for a fixed-tilt array at 38 degrees north. A 5 degree horizon costs about 1.4 percent of annual plane-of-array irradiance, 10 degrees costs 4.1 percent, 15 degrees costs 8.3 and 20 degrees costs 14.2. The curve steepens because each additional degree removes hours from progressively brighter parts of the day, and the loss is concentrated in the winter months when the sun never rises far above the obstruction." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Annual shading loss against southern horizon elevation</title>
+  <desc>A curve with southern horizon elevation from 0 to 20 degrees on the horizontal axis and annual plane-of-array loss on the vertical. The loss rises from zero at an open horizon to 1.4 percent at 5 degrees, 4.1 percent at 10 degrees, 8.3 percent at 15 degrees and 14.2 percent at 20 degrees, steepening as it goes. A secondary bar at each marked point splits the loss into the share falling in the winter months, which grows from about half to about three quarters of the total.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="hl-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Fixed-tilt array at 38°N, uniform southern horizon</text>
+  <line x1="110" y1="268" x2="860" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="110" y1="68" x2="110" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="106" y1="268.0" x2="860" y2="268.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="272.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0%</text>
+  <line x1="106" y1="207.375" x2="860" y2="207.375" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="211.375" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">5%</text>
+  <line x1="106" y1="146.75" x2="860" y2="146.75" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="150.75" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">10%</text>
+  <line x1="106" y1="86.125" x2="860" y2="86.125" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="90.125" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">15%</text>
+  <line x1="110.0" y1="268" x2="110.0" y2="273" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="110.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">0°</text>
+  <line x1="297.5" y1="268" x2="297.5" y2="273" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="297.5" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">5°</text>
+  <line x1="485.0" y1="268" x2="485.0" y2="273" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="485.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">10°</text>
+  <line x1="672.5" y1="268" x2="672.5" y2="273" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="672.5" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">15°</text>
+  <line x1="860.0" y1="268" x2="860.0" y2="273" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="860.0" y="288" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">20°</text>
+  <text x="860" y="312" text-anchor="end" font-size="11.5" fill="currentColor" opacity="0.8">southern horizon elevation</text>
+  <path d="M110.0,268.0 L297.5,251.0 L485.0,218.3 L672.5,167.4 L860.0,95.8" fill="none" stroke="#F4A261" stroke-width="2.8"/>
+  <rect x="281.5" y="259.5125" width="32" height="8.487500000000011" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.1" opacity="0.8"/>
+  <circle cx="297.5" cy="251.025" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <text x="309.5" y="241.025" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">1.4%</text>
+  <rect x="469.0" y="236.475" width="32" height="31.525000000000006" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.1" opacity="0.8"/>
+  <circle cx="485.0" cy="218.2875" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <text x="497.0" y="208.2875" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">4.1%</text>
+  <rect x="656.5" y="197.675" width="32" height="70.32499999999999" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.1" opacity="0.8"/>
+  <circle cx="672.5" cy="167.3625" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <text x="684.5" y="157.3625" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">8.3%</text>
+  <rect x="844.0" y="139.475" width="32" height="128.525" rx="3" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.1" opacity="0.8"/>
+  <circle cx="860.0" cy="95.82500000000002" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <text x="872.0" y="85.82500000000002" text-anchor="start" font-size="11" fill="#7A4A1A" font-weight="700">14.2%</text>
+  <rect x="110" y="300" width="16" height="12" rx="2" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="134" y="311" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">annual POA loss</text>
+  <rect x="320" y="300" width="16" height="12" rx="2" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2"/>
+  <text x="344" y="311" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">share falling in November–February</text>
+  <rect x="110" y="330" width="750" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="485.0" y="351" text-anchor="middle" font-size="11.5" fill="currentColor">The winter share grows from about half the loss at 5° to roughly three quarters at 20°, which is why a</text>
+  <text x="485.0" y="368" text-anchor="middle" font-size="11.5" fill="currentColor">horizon that looks minor on an annual figure can still break a winter capacity commitment.</text>
+</svg>
 
 ```python
 import numpy as np

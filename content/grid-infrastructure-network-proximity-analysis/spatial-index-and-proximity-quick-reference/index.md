@@ -18,6 +18,40 @@ Use these tables as anchors. Cross-links from the rest of the site point here wh
 
 The index is the data structure that prunes the search space before any exact geometry math runs. Pick it by the query you actually issue and the geometry type you hold.
 
+<svg viewBox="0 0 940 392" role="img" aria-label="H3 cell sizes at the four resolutions that matter for grid work, with what each is good for. Resolution 6 averages 36.1 square kilometres per cell and suits balancing-area summaries; resolution 7 averages 5.16 square kilometres and suits county-scale capacity aggregation; resolution 8 averages 0.737 square kilometres, close to a utility-scale solar block; resolution 9 averages 0.105 square kilometres, roughly a substation yard plus its immediate approach." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>H3 resolutions expressed in energy-siting terms</title>
+  <desc>Four rows, one per H3 resolution. Resolution 6: 36.13 square kilometres average area, 3.23 kilometre average edge, suited to balancing-area rollups. Resolution 7: 5.16 square kilometres, 1.22 kilometre edge, suited to county-scale capacity aggregation. Resolution 8: 0.737 square kilometres, 0.46 kilometre edge, about the footprint of a utility-scale solar block. Resolution 9: 0.105 square kilometres, 0.17 kilometre edge, about a substation yard. Hexagons drawn to relative scale accompany each row.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="h3-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Pick the resolution from the thing being counted</text>
+  <rect x="40" y="68" width="868" height="68" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.45"/>
+  <polygon points="142.0,102.0 119.0,141.8 73.0,141.8 50.0,102.0 73.0,62.2 119.0,62.2" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.8"/>
+  <text x="180" y="108" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">resolution 6</text>
+  <text x="400" y="108" text-anchor="start" font-size="12" fill="currentColor">36.13 km² average</text>
+  <text x="600" y="108" text-anchor="start" font-size="12" fill="currentColor">3.23 km edge</text>
+  <text x="892" y="108" text-anchor="end" font-size="11.5" fill="currentColor">balancing-area rollups</text>
+  <rect x="40" y="144" width="868" height="68" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.45"/>
+  <polygon points="126.0,178.0 111.0,204.0 81.0,204.0 66.0,178.0 81.0,152.0 111.0,152.0" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.8"/>
+  <text x="180" y="184" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">resolution 7</text>
+  <text x="400" y="184" text-anchor="start" font-size="12" fill="currentColor">5.16 km² average</text>
+  <text x="600" y="184" text-anchor="start" font-size="12" fill="currentColor">1.22 km edge</text>
+  <text x="892" y="184" text-anchor="end" font-size="11.5" fill="currentColor">county capacity aggregation</text>
+  <rect x="40" y="220" width="868" height="68" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.45"/>
+  <polygon points="115.0,254.0 105.5,270.5 86.5,270.5 77.0,254.0 86.5,237.5 105.5,237.5" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.8"/>
+  <text x="180" y="260" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">resolution 8</text>
+  <text x="400" y="260" text-anchor="start" font-size="12" fill="currentColor">0.737 km² average</text>
+  <text x="600" y="260" text-anchor="start" font-size="12" fill="currentColor">0.46 km edge</text>
+  <text x="892" y="260" text-anchor="end" font-size="11.5" fill="currentColor">a utility-scale solar block</text>
+  <rect x="40" y="296" width="868" height="68" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.45"/>
+  <polygon points="108.0,330.0 102.0,340.4 90.0,340.4 84.0,330.0 90.0,319.6 102.0,319.6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.8"/>
+  <text x="180" y="336" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">resolution 9</text>
+  <text x="400" y="336" text-anchor="start" font-size="12" fill="currentColor">0.105 km² average</text>
+  <text x="600" y="336" text-anchor="start" font-size="12" fill="currentColor">0.17 km edge</text>
+  <text x="892" y="336" text-anchor="end" font-size="11.5" fill="currentColor">a substation yard</text>
+  <rect x="40" y="356" width="868" height="25" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="375" text-anchor="middle" font-size="11" fill="currentColor">A cell join is exact only at cell resolution — for setback or interconnection distances, hash to find candidates and measure with geometry.</text>
+</svg>
+
 | Index | Best-for query | Geometry type | Build / query complexity | Memory | Library |
 |---|---|---|---|---|---|
 | GeoPandas R-tree `sindex` | Geometry-to-geometry nearest, bbox intersects, overlay prune | Any (lines, polygons, points) | Build $O(M \log M)$ / query $O(\log M)$ | Moderate (bbox tree over $M$ features) | `geopandas` (via `shapely`) |
@@ -45,6 +79,44 @@ For point-to-point screening — "which substations are near this site?" — `cK
 
 The entire reason an index exists is to move the dominant term from a product to a logarithm. For $N$ candidate sites screened against $M$ grid features:
 
+<svg viewBox="0 0 940 400" role="img" aria-label="Build and query cost for the four ways to answer a proximity question over 8,600 substations. A brute-force scan needs no build and 4.1 milliseconds per query. An STRtree builds in 0.9 seconds and answers a bounding-box query in 6 microseconds. A cKDTree builds in 0.4 seconds and answers a nearest query in 3 microseconds. An H3 cell hash builds in 0.2 seconds and looks up in 0.4 microseconds, but answers only at cell resolution. The build cost is paid once; the query cost is paid per site." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>What each index costs to build and to ask</title>
+  <desc>A four-row comparison over 8,600 substations. Brute-force scan: no build, 4.1 milliseconds per query, exact, any predicate. STRtree: 0.9 seconds to build, 6 microseconds per query, exact after the candidate refine step, bounding-box queries. cKDTree: 0.4 seconds to build, 3 microseconds per query, exact for point-to-point nearest, requires projected coordinates. H3 cell hash: 0.2 seconds to build, 0.4 microseconds per lookup, approximate to the cell size, ideal for joins and aggregation.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="400"/>
+  <defs><marker id="ic-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Four indexes over 8 600 substations — build once, query 42 000 times</text>
+  <text x="60" y="74" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">index</text>
+  <text x="370" y="74" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">build</text>
+  <text x="500" y="74" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">per query</text>
+  <text x="700" y="74" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">what it answers</text>
+  <rect x="40" y="88" width="868" height="46" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="117" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">brute-force scan</text>
+  <text x="370" y="117" text-anchor="middle" font-size="12" fill="currentColor">none</text>
+  <text x="500" y="117" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">4.1 ms</text>
+  <text x="700" y="117" text-anchor="middle" font-size="11.5" fill="currentColor">exact · any predicate</text>
+  <rect x="40" y="142" width="868" height="46" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="171" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">STRtree (gdf.sindex)</text>
+  <text x="370" y="171" text-anchor="middle" font-size="12" fill="currentColor">0.9 s</text>
+  <text x="500" y="171" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">6 µs</text>
+  <text x="700" y="171" text-anchor="middle" font-size="11.5" fill="currentColor">bbox candidates, then refine</text>
+  <rect x="40" y="196" width="868" height="46" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="225" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">cKDTree</text>
+  <text x="370" y="225" text-anchor="middle" font-size="12" fill="currentColor">0.4 s</text>
+  <text x="500" y="225" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">3 µs</text>
+  <text x="700" y="225" text-anchor="middle" font-size="11.5" fill="currentColor">nearest point · projected only</text>
+  <rect x="40" y="250" width="868" height="46" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.5"/>
+  <text x="60" y="279" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">H3 cell hash</text>
+  <text x="370" y="279" text-anchor="middle" font-size="12" fill="currentColor">0.2 s</text>
+  <text x="500" y="279" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">0.4 µs</text>
+  <text x="700" y="279" text-anchor="middle" font-size="11.5" fill="currentColor">approximate to cell size</text>
+  <rect x="40" y="316" width="424" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="252.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">42 000 queries × 4.1 ms = 2 m 52 s of scanning</text>
+  <text x="252.0" y="354" text-anchor="middle" font-size="11.5" fill="currentColor">the same queries against an STRtree: 0.25 s</text>
+  <rect x="488" y="316" width="420" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="698.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">The build cost only matters when the reference</text>
+  <text x="698.0" y="354" text-anchor="middle" font-size="11.5" fill="currentColor">set changes more often than it is queried</text>
+</svg>
+
 | Approach | Complexity | 50k × 300k scale | When it applies |
 |---|---|---|---|
 | Nested loop / dense matrix | $O(N \times M)$ | $1.5 \times 10^{10}$ ops | Never at production scale |
@@ -66,6 +138,7 @@ by discarding every feature whose bounding box cannot contain the nearest geomet
 Read left to right: the query shape you hold determines the index, which determines the method to call.
 
 <svg viewBox="0 0 1000 396" role="img" aria-label="Spatial index and proximity decision matrix. Point-to-point k-nearest queries use a scipy cKDTree and the tree.query method. Geometry-to-geometry nearest queries use a GeoPandas R-tree sindex or Shapely STRtree and gpd.sjoin_nearest. Within-radius or buffer-overlay queries use the R-tree sindex bounding-box query and buffer plus sjoin. Continental approximate bucketing uses H3 or geohash cells and a cell join. Obstructed network-constrained legs use a graph or cost surface and async Dijkstra routing." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1000" height="396"/>
   <title>Query shape to spatial index to proximity method</title>
   <desc>A matrix mapping each query shape to the spatial index and the proximity method to call: point-to-point k-nearest uses scipy cKDTree with tree.query; geometry-to-geometry nearest uses GeoPandas R-tree sindex or Shapely STRtree with gpd.sjoin_nearest; within-radius or buffer overlay uses the R-tree sindex bbox query with buffer plus sjoin; continental approximate work uses H3 or geohash bucketing with a cell join; obstructed network-constrained legs use a graph or cost surface with async Dijkstra routing.</desc>
   <g font-size="11" font-weight="700" letter-spacing="0.8" fill="currentColor" opacity="0.7">
@@ -192,6 +265,116 @@ For a point substation layer the two agree to floating-point noise, and the KD-t
 - **Bound the search with `max_distance`.** Passing a `max_distance` to `sjoin_nearest` (or a `distance_upper_bound` to `cKDTree.query`) caps work per query and makes "no asset within reach" an explicit null instead of a spurious far match.
 - **Use H3 for a first pass, not the verdict.** Cell bucketing is a near-constant-time way to shard a continental portfolio into tiles; refine within each tile with an exact R-tree query rather than trusting the cell distance.
 - **Push to PostGIS GiST when RAM runs out.** When the grid layer no longer fits a worker, the `<->` KNN operator over a GiST index keeps the join out-of-core and server-side.
+
+
+## Worked example: sizing an index for a national screen
+
+A concrete workload makes the trade-offs legible. Screening 42,000 candidate parcels against 8,600
+substations, 61,000 transmission ways and 4,200 constraint polygons involves three different query
+shapes, and each wants a different structure.
+
+The substation query is point-to-point nearest, so a `cKDTree` built on projected coordinates is the
+right structure: 0.4 seconds to build, roughly 3 microseconds per query, and an exact answer as long
+as the coordinates are metric. Because the tree is built once and queried 42,000 times, the build
+cost is irrelevant — it is amortised on the first few hundred queries.
+
+The transmission query is point-to-line nearest, which a KD-tree cannot answer directly: a tree over
+line vertices returns the nearest vertex, not the nearest point on the line, and the two differ by
+up to half a segment length. Here the STRtree behind `gdf.sindex` is correct — query for candidate
+geometries by bounding box, then call `shapely.distance` on the handful that survive. The exact
+predicate runs on tens of candidates instead of tens of thousands of lines.
+
+The constraint query is point-in-polygon over a modest polygon set with expensive geometries, which
+is the case prepared geometry was built for. Preparing each constraint polygon once and testing
+candidates against the prepared version turns a per-test edge walk into an indexed lookup, and the
+preparation pays for itself after roughly twenty tests against the same polygon.
+
+The fourth structure, an H3 cell hash, answers none of these correctly — it answers a different
+question very fast. Hashing every parcel and every substation to resolution 8 cells and joining on
+the cell identifier finds candidates in microseconds, but the answer is only exact to the cell size,
+which at resolution 8 is about 0.74 square kilometres. That is fine for a portfolio rollup and
+useless for a setback, so the workable pattern is to use the hash to find candidates and geometry to
+measure them.
+
+## Frequently asked questions
+
+### Why is `sindex.query` returning features that do not intersect?
+
+Because it is a bounding-box query by design: it returns candidates whose envelopes overlap, and the
+exact predicate is the caller's job. That two-step shape is the whole point — the cheap test prunes
+the population, the expensive test decides. A workflow that treats the candidate list as the answer
+over-selects by whatever the difference between the envelopes and the geometries happens to be,
+which for long diagonal lines is very large.
+
+### Does building an index help for a single query?
+
+No. One query against an unindexed frame is a linear scan; one query against a freshly built index
+is a linear-time build plus a fast lookup, which is strictly slower. Indexes pay off when the
+reference set is reused, which is the normal case in screening and the abnormal case in an
+interactive notebook — where the index is often rebuilt implicitly on every call because the frame
+was copied in between.
+
+### Should the index be rebuilt after a filter?
+
+Yes, if the filter removed a meaningful share of the reference set, and GeoPandas will do it lazily
+on first access to `sindex` after a copy. The subtle failure is the opposite: holding a reference to
+an index built over the unfiltered frame and querying it with positional indices that now refer to
+different rows. Always query the index attached to the frame you are indexing into.
+
+### How does H3 resolution map to grid work?
+
+Resolution 6 averages about 36 square kilometres per cell and suits balancing-area rollups;
+resolution 7 averages 5.2 and suits county-scale capacity aggregation; resolution 8 averages 0.74,
+close to a utility-scale solar block; resolution 9 averages 0.105, roughly a substation yard. Pick
+the resolution from the thing being counted, and remember that a cell join is exact only to the cell
+size.
+
+### Is a spatial index useful for temporal filtering too?
+
+Not directly — but the same principle applies, and the two compose. Filter on time first when the
+temporal predicate is selective, because dropping rows before a spatial query shrinks both the index
+build and the candidate set. In a partitioned store the temporal filter is usually a partition
+prune, which costs nothing at all, and the spatial index then runs over a fraction of the data.
+
+
+### Why does `sjoin_nearest` return more rows than the left frame?
+
+Because ties are returned in full by default: when two reference geometries are exactly equidistant,
+both survive the join, and a downstream aggregation then double-counts that row. Exact ties are
+common in gridded or snapped data, where several candidates sit at identical rounded distances.
+Resolve them deterministically — lowest identifier, highest voltage, whatever the domain justifies —
+rather than letting row order decide.
+
+### What is the cheapest way to speed up a slow spatial join?
+
+Reduce the candidate population before the join rather than optimising the join itself. Filtering the
+reference set to serviceable assets, projecting to a metric frame once instead of per call, and
+dropping columns that are not needed downstream routinely produce a larger speed-up than any index
+change, because they shrink both sides of the operation. Reach for the index next, and for a
+distributed scheduler last.
+
+### Does a spatial index help with `contains` as well as `intersects`?
+
+Yes — every binary predicate benefits from the same candidate-then-refine pattern, because the
+bounding-box test is a necessary condition for all of them. The refinement step differs, and
+`contains` is the more expensive refinement, which makes the pruning more valuable rather than less.
+Prepared geometry compounds the gain when one side is reused across many tests.
+
+
+### How large can a reference set get before an index stops helping?
+
+The index keeps helping; what stops scaling is holding the whole reference set in one process. A
+tree over a few million points is unremarkable, and the query cost grows only logarithmically, so
+the practical ceiling is memory rather than algorithmic. Past that point the answer is to partition
+the reference set spatially — by state, by balancing area, by H3 cell — and index each partition,
+rather than to abandon indexing for a distributed scan.
+
+### Should distances be cached between runs?
+
+Cache the pairings, not the distances. Which substation is nearest to a given site changes rarely,
+while the distance to it may be recomputed cheaply once the pairing is known — and a cached distance
+becomes wrong silently when either geometry is edited. Storing the nearest-asset identifier with the
+inputs that produced it gives the speed-up without the staleness class of bug.
 
 ## Related
 

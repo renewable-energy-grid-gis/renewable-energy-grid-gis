@@ -25,7 +25,8 @@ The distorted buffer is not one bug — it is up to four causes that each pass s
 
 The relationship between radius and screened area is quadratic, $A = \pi r^2$, which is why a units error of this magnitude does not merely shift the answer — it detonates it. A correct 5 km radius screens $\pi \times 5000^2 \approx 7.854 \times 10^{7}\ \text{m}^2$ (≈ 78.54 km²); the degree-based buffer screens an area larger than many countries.
 
-<svg viewBox="0 0 1000 320" role="img" aria-label="Two buffer paths compared. The broken path sends a Point in EPSG:4326 into .buffer(5000), where 5000 is read as degrees, producing a roughly 600,000 square-kilometre blob with no error raised. The corrected path transforms the point into a local UTM zone, buffers 5000 in metres for a true 5 km radius, then transforms back to EPSG:4326 with a crs_source tag, yielding an audit-ready zone of about 78.54 square kilometres." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+<svg viewBox="0 0 1000 264" role="img" aria-label="Two buffer paths compared. The broken path sends a Point in EPSG:4326 into .buffer(5000), where 5000 is read as degrees, producing a roughly 600,000 square-kilometre blob with no error raised. The corrected path transforms the point into a local UTM zone, buffers 5000 in metres for a true 5 km radius, then transforms back to EPSG:4326 with a crs_source tag, yielding an audit-ready zone of about 78.54 square kilometres." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1000" height="264"/>
   <title>Degree-based buffer versus a projected metre-based buffer</title>
   <desc>The broken path takes a Point in EPSG:4326 straight into buffer(5000); GEOS reads 5000 as map units, which are decimal degrees, so the result is a roughly 600,000 km blob that swallows several states and raises no exception. The corrected path reprojects the point to its local UTM zone, buffers 5000 in metres for a true 5 km radius, then reprojects back to EPSG:4326 with a crs_source lineage tag, producing an audit-ready 78.54 km exclusion zone.</desc>
   <defs>
@@ -35,7 +36,7 @@ The relationship between radius and screened area is quadratic, $A = \pi r^2$, w
   </defs>
   <g font-size="11" font-weight="700" letter-spacing="0.8" fill="currentColor" opacity="0.7">
     <text x="15" y="24">BROKEN &#8212; RADIUS TREATED AS DEGREES</text>
-    <text x="15" y="207">CORRECTED &#8212; RADIUS IN METRES</text>
+    <text x="15" y="151">CORRECTED &#8212; RADIUS IN METRES</text>
   </g>
   <!-- broken row -->
   <g stroke-width="1.5">
@@ -59,29 +60,29 @@ The relationship between radius and screened area is quadratic, $A = \pi r^2$, w
   </g>
   <!-- corrected row -->
   <g stroke-width="1.5">
-    <rect x="15"  y="235" width="170" height="72" rx="10" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.5"/>
-    <rect x="215" y="235" width="170" height="72" rx="10" fill="#DCEEF6" stroke="#5BA8C8"/>
-    <rect x="415" y="235" width="170" height="72" rx="10" fill="#DCEEF6" stroke="#5BA8C8"/>
-    <rect x="615" y="235" width="170" height="72" rx="10" fill="#DCEEF6" stroke="#5BA8C8"/>
-    <rect x="815" y="235" width="170" height="72" rx="10" fill="#DDF0E2" stroke="#3D8B5F"/>
+    <rect x="15"  y="179" width="170" height="72" rx="10" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.5"/>
+    <rect x="215" y="179" width="170" height="72" rx="10" fill="#DCEEF6" stroke="#5BA8C8"/>
+    <rect x="415" y="179" width="170" height="72" rx="10" fill="#DCEEF6" stroke="#5BA8C8"/>
+    <rect x="615" y="179" width="170" height="72" rx="10" fill="#DCEEF6" stroke="#5BA8C8"/>
+    <rect x="815" y="179" width="170" height="72" rx="10" fill="#DDF0E2" stroke="#3D8B5F"/>
   </g>
   <g stroke="currentColor" stroke-width="1.6" fill="none" opacity="0.85">
-    <line x1="185" y1="271" x2="211" y2="271" marker-end="url(#buf-arrow)"/>
-    <line x1="385" y1="271" x2="411" y2="271" marker-end="url(#buf-arrow)"/>
-    <line x1="585" y1="271" x2="611" y2="271" marker-end="url(#buf-arrow)"/>
-    <line x1="785" y1="271" x2="811" y2="271" marker-end="url(#buf-arrow)"/>
+    <line x1="185" y1="215" x2="211" y2="215" marker-end="url(#buf-arrow)"/>
+    <line x1="385" y1="215" x2="411" y2="215" marker-end="url(#buf-arrow)"/>
+    <line x1="585" y1="215" x2="611" y2="215" marker-end="url(#buf-arrow)"/>
+    <line x1="785" y1="215" x2="811" y2="215" marker-end="url(#buf-arrow)"/>
   </g>
   <g fill="currentColor" text-anchor="middle">
-    <text x="100" y="271" font-size="12.5" font-weight="600">Point geometry</text>
-    <text x="100" y="289" font-size="11" opacity="0.75">EPSG:4326</text>
-    <text x="300" y="268" font-size="12.5">Transform &#8594; UTM</text>
-    <text x="300" y="286" font-size="10.5" opacity="0.75" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">always_xy=True</text>
-    <text x="500" y="268" font-size="12.5" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">.buffer(5000)</text>
-    <text x="500" y="286" font-size="11" opacity="0.75">metres &#8594; true 5 km</text>
-    <text x="700" y="268" font-size="12.5">Transform &#8594; 4326</text>
-    <text x="700" y="286" font-size="11" opacity="0.75">store + crs_source tag</text>
-    <text x="900" y="268" font-size="12.5" font-weight="600">&#8776; 78.54 km&#178; zone</text>
-    <text x="900" y="286" font-size="11" opacity="0.75">audit-ready</text>
+    <text x="100" y="215" font-size="12.5" font-weight="600">Point geometry</text>
+    <text x="100" y="233" font-size="11" opacity="0.75">EPSG:4326</text>
+    <text x="300" y="212" font-size="12.5">Transform &#8594; UTM</text>
+    <text x="300" y="230" font-size="10.5" opacity="0.75" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">always_xy=True</text>
+    <text x="500" y="212" font-size="12.5" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">.buffer(5000)</text>
+    <text x="500" y="230" font-size="11" opacity="0.75">metres &#8594; true 5 km</text>
+    <text x="700" y="212" font-size="12.5">Transform &#8594; 4326</text>
+    <text x="700" y="230" font-size="11" opacity="0.75">store + crs_source tag</text>
+    <text x="900" y="212" font-size="12.5" font-weight="600">&#8776; 78.54 km&#178; zone</text>
+    <text x="900" y="230" font-size="11" opacity="0.75">audit-ready</text>
   </g>
 </svg>
 
@@ -214,6 +215,7 @@ def generate_substation_buffers(
 Explicit parameter choices, justified for grid-GIS use: the per-asset UTM zone keeps linear distortion under ~0.04% near the central meridian (far tighter than the 1% a static zone risks); `always_xy=True` eliminates the legacy lon/lat axis-swap that silently mirrors geometry in `pyproj` 6+; `make_valid` is a deterministic repair rather than a `buffer(0)` heuristic; and `chunk_size=2500` bounds peak heap during the GEOS C-extension calls and any downstream serialisation. The buffer radius itself should not stay a hard-coded scalar for production capacity work — derive it per asset from voltage class and thermal rating as the parent [Grid Capacity Buffer Analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/) workflow does, and feed it geometry that has already passed [spatial data quality validation](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/spatial-data-quality-validation/).
 
 <svg viewBox="0 0 1040 330" role="img" aria-label="Fixed buffer pipeline data flow. Streaming EPSG:4326 features pass through per-asset UTM zone selection with utm_epsg_for, transform to UTM and buffer 5000 metres, make_valid repair, then reproject back to EPSG:4326. Each result is appended to a chunk buffer held inside a bounded-memory region capped at chunk_size 2500; when the chunk fills it is yielded to downstream proximity work, so a national substation set never materialises in memory at once." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1040" height="330"/>
   <title>Streaming per-asset buffer pipeline with a bounded-memory chunk buffer</title>
   <desc>EPSG:4326 features stream through five per-record stages: utm_epsg_for picks the local UTM zone, a Transformer projects the point and buffers 5000 metres for a true 5 km radius, make_valid repairs any invalid polygon, and a second Transformer reprojects back to EPSG:4326 with a crs_source tag. Each finished feature is appended to a chunk buffer that lives inside a dashed bounded-memory region capped at chunk_size 2500. When the chunk fills it is yielded to downstream proximity work and reset, so the full national set never materialises in memory at once.</desc>
   <defs>
@@ -285,6 +287,51 @@ Explicit parameter choices, justified for grid-GIS use: the per-asset UTM zone k
 - **Batch scale (>100k assets):** push the per-asset transform into a vectorised `geopandas.GeoSeries.to_crs()` grouped by UTM zone, or distribute chunks with `dask-geopandas`, so transformer construction is amortised across the group instead of rebuilt per record.
 - **Spatial-index reuse:** when buffers feed a proximity query, build an STRtree once over the buffered set rather than per query — see [proximity & distance calculations](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/proximity-distance-calculations/) for the indexing pattern.
 - **CI/CD memory ceiling:** if `GEOSException` persists under tight runners, lower `chunk_size` to 500 and confirm the GEOS C-extension is linked against the expected `libgeos`; pin versions so the deterministic gate runs against the same engine as production.
+
+<svg viewBox="0 0 940 396" role="img" aria-label="What the quad_segs parameter costs and buys on a 5 kilometre buffer. The buffer is a regular polygon of four times quad_segs vertices inscribed in the true circle, so its area is n over two pi times the sine of two pi over n. At quad_segs 1 the polygon holds 63.7 percent of the true area, at 2 it is 90.0 percent, at 4 it is 97.4, at 8 it is 99.4 and at 16 it is 99.85. The default of 8 costs 32 vertices per asset and understates a 78.54 square kilometre zone by 0.5 square kilometres." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Buffer resolution: vertices per asset against area actually enclosed</title>
+  <desc>A table over five quad_segs settings — 1, 2, 4, 8 and 16 — giving the vertex count per buffer (4, 8, 16, 32 and 64), the fraction of the true circle area enclosed (63.7, 90.0, 97.4, 99.4 and 99.85 percent) and the resulting area of a 5 kilometre buffer against the true 78.54 square kilometres. Small inset polygons show the shape at each setting, from a square at quad_segs 1 to a near-circle at 16. The default setting of 8 is marked.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="qs-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">A buffer is a polygon: quad_segs decides how close to a circle it gets</text>
+  <circle cx="124" cy="132" r="46" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
+  <polygon points="156.5,99.5 156.5,164.5 91.5,164.5 91.5,99.5" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.6"/>
+  <text x="124" y="212" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">quad_segs = 1</text>
+  <text x="124" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">4 vertices</text>
+  <text x="124" y="258" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">63.66% of area</text>
+  <text x="124" y="278" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">50.00 km²</text>
+  <circle cx="300" cy="132" r="46" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
+  <polygon points="332.5,99.5 346.0,132.0 332.5,164.5 300.0,178.0 267.5,164.5 254.0,132.0 267.5,99.5 300.0,86.0" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.6"/>
+  <text x="300" y="212" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">quad_segs = 2</text>
+  <text x="300" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">8 vertices</text>
+  <text x="300" y="258" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">90.03% of area</text>
+  <text x="300" y="278" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">70.71 km²</text>
+  <circle cx="476" cy="132" r="46" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
+  <polygon points="508.5,99.5 518.5,114.4 522.0,132.0 518.5,149.6 508.5,164.5 493.6,174.5 476.0,178.0 458.4,174.5 443.5,164.5 433.5,149.6 430.0,132.0 433.5,114.4 443.5,99.5 458.4,89.5 476.0,86.0 493.6,89.5" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.6"/>
+  <text x="476" y="212" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">quad_segs = 4</text>
+  <text x="476" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">16 vertices</text>
+  <text x="476" y="258" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">97.45% of area</text>
+  <text x="476" y="278" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">76.54 km²</text>
+  <circle cx="652" cy="132" r="46" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
+  <polygon points="684.5,99.5 690.2,106.4 694.5,114.4 697.1,123.0 698.0,132.0 697.1,141.0 694.5,149.6 690.2,157.6 684.5,164.5 677.6,170.2 669.6,174.5 661.0,177.1 652.0,178.0 643.0,177.1 634.4,174.5 626.4,170.2 619.5,164.5 613.8,157.6 609.5,149.6 606.9,141.0 606.0,132.0 606.9,123.0 609.5,114.4 613.8,106.4 619.5,99.5 626.4,93.8 634.4,89.5 643.0,86.9 652.0,86.0 661.0,86.9 669.6,89.5 677.6,93.8" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="652" y="212" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">quad_segs = 8</text>
+  <text x="652" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">32 vertices</text>
+  <text x="652" y="258" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">99.36% of area</text>
+  <text x="652" y="278" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">78.04 km²</text>
+  <circle cx="828" cy="132" r="46" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
+  <polygon points="860.5,99.5 863.6,102.8 866.2,106.4 868.6,110.3 870.5,114.4 872.0,118.6 873.1,123.0 873.8,127.5 874.0,132.0 873.8,136.5 873.1,141.0 872.0,145.4 870.5,149.6 868.6,153.7 866.2,157.6 863.6,161.2 860.5,164.5 857.2,167.6 853.6,170.2 849.7,172.6 845.6,174.5 841.4,176.0 837.0,177.1 832.5,177.8 828.0,178.0 823.5,177.8 819.0,177.1 814.6,176.0 810.4,174.5 806.3,172.6 802.4,170.2 798.8,167.6 795.5,164.5 792.4,161.2 789.8,157.6 787.4,153.7 785.5,149.6 784.0,145.4 782.9,141.0 782.2,136.5 782.0,132.0 782.2,127.5 782.9,123.0 784.0,118.6 785.5,114.4 787.4,110.3 789.8,106.4 792.4,102.8 795.5,99.5 798.8,96.4 802.4,93.8 806.3,91.4 810.4,89.5 814.6,88.0 819.0,86.9 823.5,86.2 828.0,86.0 832.5,86.2 837.0,86.9 841.4,88.0 845.6,89.5 849.7,91.4 853.6,93.8 857.2,96.4" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.6"/>
+  <text x="828" y="212" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">quad_segs = 16</text>
+  <text x="828" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">64 vertices</text>
+  <text x="828" y="258" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">99.84% of area</text>
+  <text x="828" y="278" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">78.41 km²</text>
+  <text x="40" y="306" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">true 5 km circle = 78.54 km²</text>
+  <rect x="40" y="320" width="424" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="252.0" y="341" text-anchor="middle" font-size="11.5" fill="currentColor">The default quad_segs=8 understates a 5 km zone</text>
+  <text x="252.0" y="358" text-anchor="middle" font-size="11.5" fill="currentColor">by 0.50 km² — under-, never over-stating capacity</text>
+  <rect x="488" y="320" width="412" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="694.0" y="341" text-anchor="middle" font-size="11.5" fill="currentColor">Raising it to 16 quadruples the vertex count</text>
+  <text x="694.0" y="358" text-anchor="middle" font-size="11.5" fill="currentColor">on every asset for another 0.45% of area</text>
+</svg>
 
 ## Downstream validation
 

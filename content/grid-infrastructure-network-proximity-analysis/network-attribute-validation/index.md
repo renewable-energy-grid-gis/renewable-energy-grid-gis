@@ -25,6 +25,7 @@ The second is **topological invalidity**. Digitised utility maps routinely conta
 The third is **CRS misalignment**. A layer with no `.prj`, or a stack mixing EPSG:4326 (degrees) with a projected UTM frame, makes every distance and buffer wrong. Planar distance is only meaningful in a projected CRS; run a 5 km substation setback against geographic coordinates and the radius is interpreted as 5000 *degrees*. The magnitude of the degree-vs-metre error scales with latitude — at latitude $\varphi$ the east–west ground distance of one degree of longitude is $111{,}320 \cdot \cos(\varphi)$ metres — so the same unprojected buffer is wrong by a different amount in every part of a portfolio. The validation gate must normalise CRS before any geometry is measured.
 
 <svg viewBox="0 0 1020 300" role="img" aria-label="Validation pipeline data flow. A raw vector dataset feeds an async chunk reader that processes 5,000 features at a time. Each chunk fans out to three parallel checks: schema check for required columns and valid statuses, CRS normalization to EPSG 32618, and make_valid topology repair with null dropping. All three write to an anomaly log CSV, which feeds a clean GeoDataFrame passed on to buffer analysis." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1020" height="300"/>
   <title>Chunked validation pipeline data flow</title>
   <desc>A raw vector dataset is read by an async chunk reader in 5,000-feature slices. Each chunk fans out to three row-local checks run in parallel — schema enforcement, CRS normalization to EPSG:32618, and make_valid topology repair — which all append to an anomaly log CSV. The log feeds a clean, projected GeoDataFrame that is handed to downstream buffer analysis.</desc>
   <defs>
@@ -261,6 +262,62 @@ The happy path is deliberately explicit at every decision point: schema gaps rai
 
 Three failure modes from the problem framing need explicit coverage, and the cost of each is that it does *not* throw on its own.
 
+<svg viewBox="0 0 1060 400" role="img" aria-label="What a voltage column actually contains once a national feed is loaded. Nominal transmission classes cluster at 69, 115, 138, 230, 345 and 500 kilovolts and account for 94 percent of rows. The remaining 6 percent are the ones a schema has to name: distribution values such as 12.47 and 34.5 that belong to a different network layer, volt-scale values such as 115000 where the unit was never converted, a 1150 typo for 115, and nulls. A range check alone passes the 12.47 and fails nothing that matters." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The six percent of voltage values that break an unguarded schema</title>
+  <desc>A histogram of voltage values in a national transmission feed. Tall bars sit at the nominal classes 69, 115, 138, 230, 345 and 500 kilovolts. Four short bars, drawn in a warning colour and annotated, sit apart: distribution-class values at 12.47 and 34.5 kilovolts, unconverted volt-scale values at 115000, a transposed 1150, and a null bucket. A note explains that a simple minimum and maximum range check accepts the distribution values and the typo, so the schema needs an allowed-set check on nominal classes plus an explicit unit test.</desc>
+  <rect class="svg-bg" x="0" y="0" width="1060" height="400"/>
+  <defs><marker id="vh-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Voltage as delivered: six nominal classes and four kinds of wrong</text>
+  <line x1="56" y1="268" x2="1020" y2="268" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="70" y="117.14285714285714" width="72" height="150.85714285714286" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="106" y="107.14285714285714" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">22%</text>
+  <text x="106" y="288" text-anchor="middle" font-size="11" fill="currentColor">69 kV</text>
+  <rect x="156" y="89.71428571428572" width="72" height="178.28571428571428" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="192" y="79.71428571428572" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">26%</text>
+  <text x="192" y="288" text-anchor="middle" font-size="11" fill="currentColor">115 kV</text>
+  <rect x="242" y="172.0" width="72" height="96.0" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="278" y="162.0" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">14%</text>
+  <text x="278" y="288" text-anchor="middle" font-size="11" fill="currentColor">138 kV</text>
+  <rect x="328" y="144.57142857142856" width="72" height="123.42857142857144" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="364" y="134.57142857142856" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">18%</text>
+  <text x="364" y="288" text-anchor="middle" font-size="11" fill="currentColor">230 kV</text>
+  <rect x="414" y="206.28571428571428" width="72" height="61.71428571428572" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="450" y="196.28571428571428" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">9%</text>
+  <text x="450" y="288" text-anchor="middle" font-size="11" fill="currentColor">345 kV</text>
+  <rect x="500" y="233.71428571428572" width="72" height="34.285714285714285" rx="4" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <text x="536" y="223.71428571428572" text-anchor="middle" font-size="11" fill="#2C6E8F" font-weight="700">5%</text>
+  <text x="536" y="288" text-anchor="middle" font-size="11" fill="currentColor">500 kV</text>
+  <line x1="586" y1="72" x2="586" y2="274" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity="0.4"/>
+  <rect x="608" y="253.6" width="60" height="14.399999999999999" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="638" y="243.6" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">2.1%</text>
+  <text x="638" y="288" text-anchor="middle" font-size="10.5" fill="currentColor">12.47</text>
+  <text x="638" y="304" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.8">distribution class</text>
+  <rect x="682" y="257.0285714285714" width="60" height="10.971428571428572" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="712" y="247.0285714285714" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">1.6%</text>
+  <text x="712" y="288" text-anchor="middle" font-size="10.5" fill="currentColor">34.5</text>
+  <text x="712" y="304" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.8">distribution class</text>
+  <rect x="756" y="258.4" width="60" height="9.6" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="786" y="248.39999999999998" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">1.4%</text>
+  <text x="786" y="288" text-anchor="middle" font-size="10.5" fill="currentColor">115000</text>
+  <text x="786" y="304" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.8">volts, not kV</text>
+  <rect x="830" y="262" width="60" height="6" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="860" y="252" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">0.5%</text>
+  <text x="860" y="288" text-anchor="middle" font-size="10.5" fill="currentColor">1150</text>
+  <text x="860" y="304" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.8">transposed 115</text>
+  <rect x="904" y="262" width="60" height="6" rx="4" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4"/>
+  <text x="934" y="252" text-anchor="middle" font-size="10.5" fill="#7A4A1A" font-weight="700">0.4%</text>
+  <text x="934" y="288" text-anchor="middle" font-size="10.5" fill="currentColor">null</text>
+  <text x="934" y="304" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.8">missing</text>
+  <text x="70" y="54" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">nominal classes — 94% of rows</text>
+  <text x="700" y="54" text-anchor="start" font-size="11" fill="currentColor" opacity="0.85">the other 6%</text>
+  <rect x="70" y="304" width="464" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="302.0" y="325" text-anchor="middle" font-size="11.5" fill="currentColor">A min/max range check accepts 12.47 kV</text>
+  <text x="302.0" y="342" text-anchor="middle" font-size="11.5" fill="currentColor">and the transposed 1150 — both are “in range”</text>
+  <rect x="556" y="304" width="464" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="788.0" y="325" text-anchor="middle" font-size="11.5" fill="currentColor">An allowed-set check on nominal classes plus a</text>
+  <text x="788.0" y="342" text-anchor="middle" font-size="11.5" fill="currentColor">unit assertion rejects all five categories</text>
+</svg>
+
 **Domain drift in status and rating fields.** Free-text status columns and out-of-range thermal ratings pass type checks while corrupting capacity logic. Coerce against the declared domain and flag — never delete — the offenders:
 
 ```python
@@ -309,6 +366,7 @@ def guard_topology(gdf: gpd.GeoDataFrame, snap_tol_m: float = 1.0) -> gpd.GeoDat
 ```
 
 <svg viewBox="0 0 1020 372" role="img" aria-label="Decision flow for the three silent failure modes. Domain drift, meaning free-text status and out-of-range MVA, is handled by guard_domain, which quarantines values to status equals unknown and capacity set to NA. Undefined or geographic CRS is handled by guard_crs, which raises on an undefined CRS and warns on a geographic one. Irreparable topology and orphaned nodes are handled by guard_topology, which drops geometries that collapse to empty and flags suspect orphans. All three outcomes converge on a single clean GeoDataFrame plus anomaly log sink." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1020" height="372"/>
   <title>Mapping each failure mode to its guard and outcome</title>
   <desc>Three silent failure modes each route to a guard function and an outcome branch: domain drift to guard_domain (quarantine status to 'unknown', set bad ratings to NA); undefined or geographic CRS to guard_crs (raise if undefined, warn if geographic); irreparable topology and orphaned nodes to guard_topology (drop geometries that collapse to empty, flag suspect orphans). All outcomes converge on a clean GeoDataFrame plus immutable anomaly log.</desc>
   <defs>
@@ -425,6 +483,33 @@ def audit_summary(clean_gdf: gpd.GeoDataFrame, log: list, target_epsg: int) -> s
 ```
 
 In CI/CD, wrap the validator in `pytest` with small spatial fixtures and gate on these assertions: an output unit of `degree`, an anomaly rate that jumps above a baseline, or a non-empty set of irreparable geometries each signals an upstream ETL regression that must block release rather than ship into a permitting submission. The cleaned output then transitions safely into spatial buffering — analysts can feed it to [grid capacity buffer analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/) without risking projection-induced distance errors or topology breaks — and the same anomaly log threads forward as the provenance record. By embedding schema enforcement, domain coercion, CRS normalization, topology repair, memory-aware chunking, and an immutable audit log into the ingestion layer, grid teams eliminate the silent failures that otherwise surface only at interconnection review.
+
+
+## Frequently asked questions
+
+### Should validation coerce types or reject them?
+
+Coerce the types, then judge the values — and never confuse the two steps. Coercion turns the string
+`"115"` into `115.0` and the string `"115 kV"` into `NaN`, which then fails a nullability check
+rather than a unit check, so the reported error names the wrong cause. Coerce first because
+downstream code needs a numeric column, then apply an allowed-set check on nominal voltage classes,
+which is the only check that catches a cleanly coerced `115000`.
+
+### Where should quarantined records go?
+
+To a dead-letter store keyed by source and batch, carrying the failing column, the check that
+failed, the offending value and the row index — which is exactly what pandera's `failure_cases`
+frame already contains. Writing the frame straight out means triage happens without re-reading the
+source, and the same store gives an honest quarantine-rate metric, which is the earliest signal that
+an upstream provider changed something.
+
+### How strict should the schema be on optional attributes?
+
+Strict about type and nullability, permissive about presence. A `circuits` column that is absent on
+three-fifths of OpenStreetMap ways should be declared nullable rather than required, because a
+required declaration turns a data-availability fact into a pipeline failure. What must stay strict
+is what happens downstream: a capacity model consuming a null circuit count has to carry an explicit
+unknown path rather than defaulting silently to one.
 
 ## Related
 

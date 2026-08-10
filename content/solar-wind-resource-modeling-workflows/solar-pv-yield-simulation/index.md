@@ -50,7 +50,38 @@ The net result is not random noise. It is a systematic overstatement that a lend
 
 The `ModelChain` is pvlib's orchestration object: given a `Location` (latitude, longitude, timezone), a `PVSystem` (mount geometry, module and inverter parameters, temperature model, losses), and a weather frame, it runs solar position, transposition, cell temperature, DC, and AC in the correct order and stores every intermediate on `mc.results`. The diagram below is the transform sequence, with the failure each guarded stage prevents called out beneath it.
 
-<svg viewBox="0 0 1080 430" role="img" aria-label="Solar PV yield simulation chain: a GHI, DNI, DHI raster with air temperature and wind feeds plane-of-array transposition using the Perez sky model, then a cell-temperature and DC model, then inverter clipping and the losses stack, producing a capacity factor and annual energy field. Three amber callouts mark the failure each guarded stage prevents: skipping transposition gives a flat-plate error, skipping the cell-temperature derate overstates output in heat, and skipping the inverter clip books phantom AC energy above the AC rating." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+<svg viewBox="0 0 940 392" role="img" aria-label="Why the cell temperature model matters. At a 35 degree ambient with 900 watts per square metre of plane-of-array irradiance and 1 metre per second of wind, an open-rack module runs at about 58 degrees and a close-roof-mounted one at about 71. At a power temperature coefficient of minus 0.35 percent per degree above 25, that is a 11.6 percent derate open rack and a 16.1 percent derate close-mounted — from the same weather file and the same module." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The same weather hour, two mounting configurations, two derates</title>
+  <desc>A comparison for a single hour at 35 degrees ambient, 900 watts per square metre plane-of-array and 1 metre per second wind. Open-rack mounting gives a cell temperature of about 58 degrees, which at minus 0.35 percent per degree above 25 degrees is an 11.6 percent power derate. Close roof mounting gives about 71 degrees and a 16.1 percent derate. A third bar shows what using the 35 degree air temperature directly would produce: a 3.5 percent derate, understating the loss by a factor of three.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="ct-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One weather hour: 35 °C air, 900 W/m² POA, 1 m/s wind</text>
+  <rect x="40" y="74" width="868" height="68" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.3" opacity="0.5"/>
+  <text x="60" y="104" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">air temperature used directly</text>
+  <text x="60" y="126" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">cell temperature 35 °C</text>
+  <rect x="420" y="94" width="300" height="28" rx="4" fill="none" stroke="#C85B5B" stroke-width="1"/>
+  <rect x="420" y="94" width="58.333333333333336" height="28" rx="4" fill="#C85B5B" stroke="#C85B5B" stroke-width="1" opacity="0.5"/>
+  <text x="742" y="114" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">−3.5% power</text>
+  <rect x="40" y="154" width="868" height="68" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.3" opacity="0.5"/>
+  <text x="60" y="184" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">open rack (SAPM)</text>
+  <text x="60" y="206" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">cell temperature 58 °C</text>
+  <rect x="420" y="174" width="300" height="28" rx="4" fill="none" stroke="#5BA8C8" stroke-width="1"/>
+  <rect x="420" y="174" width="193.33333333333334" height="28" rx="4" fill="#5BA8C8" stroke="#5BA8C8" stroke-width="1" opacity="0.5"/>
+  <text x="742" y="194" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">−11.6% power</text>
+  <rect x="40" y="234" width="868" height="68" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.5"/>
+  <text x="60" y="264" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">close roof mount (SAPM)</text>
+  <text x="60" y="286" text-anchor="start" font-size="11" fill="currentColor" opacity="0.9">cell temperature 71 °C</text>
+  <rect x="420" y="254" width="300" height="28" rx="4" fill="none" stroke="#F4A261" stroke-width="1"/>
+  <rect x="420" y="254" width="268.3333333333333" height="28" rx="4" fill="#F4A261" stroke="#F4A261" stroke-width="1" opacity="0.5"/>
+  <text x="742" y="274" text-anchor="start" font-size="12.5" fill="currentColor" font-weight="700">−16.1% power</text>
+  <text x="40" y="322" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">γ_Pmp = −0.35 %/°C above 25 °C</text>
+  <rect x="40" y="334" width="868" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="474.0" y="355" text-anchor="middle" font-size="11.5" fill="currentColor">Using air temperature is not a small simplification: it understates the derate by roughly a factor of</text>
+  <text x="474.0" y="372" text-anchor="middle" font-size="11.5" fill="currentColor">three, and the error is largest exactly when generation matters most — the hot summer peak.</text>
+</svg>
+
+<svg viewBox="4 34 1052 307" role="img" aria-label="Solar PV yield simulation chain: a GHI, DNI, DHI raster with air temperature and wind feeds plane-of-array transposition using the Perez sky model, then a cell-temperature and DC model, then inverter clipping and the losses stack, producing a capacity factor and annual energy field. Three amber callouts mark the failure each guarded stage prevents: skipping transposition gives a flat-plate error, skipping the cell-temperature derate overstates output in heat, and skipping the inverter clip books phantom AC energy above the AC rating." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="4" y="34" width="1052" height="307"/>
   <title>From resource raster to AC energy through the pvlib ModelChain</title>
   <desc>A left-to-right pipeline. A GHI/DNI/DHI raster carrying air temperature and wind enters plane-of-array transposition (Perez sky model), then a cell-temperature and DC model (SAPM temperature, PVWatts DC), then inverter clipping and the losses stack governed by the DC/AC ratio, ending in a green capacity_factor and annual_energy_mwh field. Amber callouts beneath three stages mark what each prevents: no transposition yields a flat-plate error, skipping the cell-temperature derate overstates output in heat, and no inverter clip books phantom AC energy above the AC nameplate.</desc>
   <defs>
@@ -216,6 +247,51 @@ Two design choices are load-bearing. The inverter's `pdc0` is set from the DC/AC
 ## Error Handling & Edge Cases
 
 Each failure mode named in the framing has a concrete guard.
+
+<svg viewBox="0 0 940 436" role="img" aria-label="What the DC to AC ratio buys and costs. Raising the ratio from 1.0 to 1.4 lifts annual AC energy by about 21 percent because the inverter runs closer to its rating for more hours, while clipping losses rise from zero to about 4.6 percent. The net gain flattens near 1.25 to 1.30, which is why most utility-scale designs land there — and why a simulation that omits the clipping stage reports a gain that keeps rising." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>AC energy gain and clipping loss against the DC to AC ratio</title>
+  <desc>A chart with the DC to AC ratio from 1.0 to 1.5 on the horizontal axis. One curve shows annual AC energy gain relative to a 1.0 ratio, rising steeply to about 15 percent at 1.25 and flattening near 21 percent at 1.4. A second curve shows clipping loss rising from zero at 1.0 to 0.9 percent at 1.2, 2.4 percent at 1.3 and 4.6 percent at 1.4. A shaded band marks 1.25 to 1.30 as the region where the net gain flattens, and a note observes that a model without a clipping stage shows the gain curve continuing to rise.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="436"/>
+  <defs><marker id="dc-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Oversizing the array against the inverter: gain versus clipping</text>
+  <line x1="110" y1="286" x2="860" y2="286" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="110" y1="68" x2="110" y2="286" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <rect x="485.0" y="68" width="75.0" height="218" rx="0" fill="#DDF0E2" opacity="0.6"/>
+  <text x="522.4999999999999" y="82" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">usual design band</text>
+  <line x1="106" y1="286.0" x2="860" y2="286.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="290.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0%</text>
+  <line x1="106" y1="241.83333333333331" x2="860" y2="241.83333333333331" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="245.83333333333331" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">5%</text>
+  <line x1="106" y1="197.66666666666666" x2="860" y2="197.66666666666666" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="201.66666666666666" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">10%</text>
+  <line x1="106" y1="153.5" x2="860" y2="153.5" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="157.5" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">15%</text>
+  <line x1="106" y1="109.33333333333331" x2="860" y2="109.33333333333331" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="113.33333333333331" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">20%</text>
+  <line x1="110.0" y1="286" x2="110.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="110.0" y="306" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.0</text>
+  <line x1="260.0000000000001" y1="286" x2="260.0000000000001" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="260.0000000000001" y="306" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.1</text>
+  <line x1="409.99999999999994" y1="286" x2="409.99999999999994" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="409.99999999999994" y="306" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.2</text>
+  <line x1="560.0" y1="286" x2="560.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="560.0" y="306" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.3</text>
+  <line x1="709.9999999999999" y1="286" x2="709.9999999999999" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="709.9999999999999" y="306" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.4</text>
+  <line x1="860.0" y1="286" x2="860.0" y2="291" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="860.0" y="306" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1.5</text>
+  <text x="110" y="330" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">DC to AC ratio</text>
+  <path d="M110.0,286.0 L260.0,222.4 L410.0,172.9 L485.0,152.6 L560.0,133.2 L710.0,101.4 L860.0,86.4" fill="none" stroke="#3D8B5F" stroke-width="2.6"/>
+  <path d="M110.0,286.0 L260.0,284.2 L410.0,278.1 L485.0,272.8 L560.0,264.8 L710.0,245.4 L860.0,220.6" fill="none" stroke="#F4A261" stroke-width="2.6"/>
+  <text x="739.9999999999999" y="89.38333333333335" text-anchor="end" font-size="11.5" fill="#1F5C3A" font-weight="700">AC energy gain</text>
+  <text x="769.9999999999999" y="233.36666666666667" text-anchor="end" font-size="11.5" fill="#7A4A1A" font-weight="700">clipping loss</text>
+  <rect x="110" y="354" width="366" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="293.0" y="375" text-anchor="middle" font-size="11.5" fill="currentColor">A ModelChain without an inverter stage</text>
+  <text x="293.0" y="392" text-anchor="middle" font-size="11.5" fill="currentColor">shows only the green curve</text>
+  <rect x="494" y="354" width="366" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="677.0" y="375" text-anchor="middle" font-size="11.5" fill="currentColor">Which is why an oversized array looks</text>
+  <text x="677.0" y="392" text-anchor="middle" font-size="11.5" fill="currentColor">unambiguously better until it is built</text>
+</svg>
 
 **Timezone-naive weather index.** The constructor above rejects it outright. There is no safe default: pvlib will happily run on a naive index and return a curve that is offset by the site's UTC offset, producing a capacity factor that looks reasonable and is wrong by hours of generation. Localize with `weather.index.tz_localize("Etc/GMT+8")` (or the site's IANA zone) before calling.
 

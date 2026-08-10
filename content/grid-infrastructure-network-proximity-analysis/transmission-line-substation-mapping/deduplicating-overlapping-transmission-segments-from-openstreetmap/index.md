@@ -29,6 +29,7 @@ $$ d_H(A, B) = \max\left\{\, \sup_{a \in A}\inf_{b \in B} d(a,b),\; \sup_{b \in 
 Buffer overlap alone flags two crossing lines that share a junction; Hausdorff alone is fooled by a short stub lying near a long line. Requiring both — a high buffer intersection-over-union together with a Hausdorff value under a tower-spacing tolerance — isolates true collinear copies.
 
 <svg viewBox="0 0 920 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision flow for deduplicating overlapping transmission segments. A candidate segment pair from a spatial-index overlap query first passes a corridor-buffer overlap gate; pairs whose buffers do not overlap are distinct corridors and both are kept. Overlapping pairs reach a Hausdorff-distance gate. If the Hausdorff distance is within epsilon the pair is a near-duplicate and is grouped, keeping the best-attributed representative — highest voltage and most complete record — which yields corrected circuit kilometres with no length double count. If the Hausdorff distance exceeds epsilon the pair reaches a lateral-offset gate: a consistent offset marks a real double circuit that is kept as both, while no consistent offset marks a partial or T overlap where only the shared span is trimmed." style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="920" height="512"/>
   <title>Duplicate-segment decision flow: buffer overlap, Hausdorff, and offset gates routing to keep-both, trim, or keep-best-representative</title>
   <desc>Top-to-bottom flow on a left spine. Input: a candidate segment pair from a spatial-index overlap query. Gate one tests corridor buffer overlap; no overlap exits right to a keep-both node for distinct corridors. Overlap continues down to gate two, the Hausdorff distance test. Within epsilon routes down the main path to grouping and keeping the best-attributed representative, producing corrected circuit kilometres. Beyond epsilon branches right to gate three, a consistent lateral offset test: yes marks a real double circuit routed to the keep-both node, no marks a partial or T overlap routed to a trim-shared-span node.</desc>
   <defs>
@@ -71,9 +72,9 @@ Buffer overlap alone flags two crossing lines that share a junction; Hausdorff a
   <!-- G3 no -> trim -->
   <line x1="540" y1="294" x2="540" y2="340" stroke="currentColor" stroke-width="1.4" marker-end="url(#dd-arr)"/>
   <text x="554" y="320" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">no</text>
-  <rect x="390" y="342" width="300" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
-  <text x="540" y="363" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Partial / T-overlap</text>
-  <text x="540" y="380" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">trim shared span only</text>
+  <rect x="404" y="342" width="290" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="549" y="363" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Partial / T-overlap</text>
+  <text x="549" y="380" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">trim shared span only</text>
   <!-- G2 yes -> group -->
   <line x1="250" y1="294" x2="250" y2="340" stroke="currentColor" stroke-width="1.4" marker-end="url(#dd-arr)"/>
   <text x="264" y="320" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">yes</text>
@@ -90,6 +91,34 @@ Buffer overlap alone flags two crossing lines that share a junction; Hausdorff a
 ## Pre-flight validation
 
 Detection must run in a projected metric frame — buffers and Hausdorff distances are meaningless in degrees, so the same [coordinate reference system alignment](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/coordinate-reference-systems-for-energy-projects/) discipline that governs every distance operation applies here. The detector below reprojects to EPSG:32614 (UTM Zone 14N, a central-US grid footprint), builds flat-capped corridor buffers, prunes candidate pairs with the spatial index, and flags a pair only when the buffer overlap fraction and the Hausdorff distance both clear their thresholds. It returns a report rather than mutating anything, so a CI run can inspect exactly which segments would merge before the fix touches the data.
+
+<svg viewBox="0 0 940 344" role="img" aria-label="Why duplicate detection uses the Hausdorff distance rather than an average offset. Two segments that run parallel 18 metres apart along most of their length but diverge to 240 metres at one end have a small mean offset and a Hausdorff distance of 240 metres. The Hausdorff figure is the one that matters: it is the worst disagreement anywhere along the pair, so a threshold on it cannot be satisfied by two lines that agree in the middle and part company at the end." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Hausdorff distance is the worst disagreement, not the average one</title>
+  <desc>Two near-parallel line segments drawn over a common corridor. For most of their length they sit 18 metres apart; at the eastern end one swings away to 240 metres. Vertical measurement ticks show the separation at intervals. Two annotations compare the statistics: a mean offset of 31 metres, which would pass a 50 metre duplicate threshold, and a Hausdorff distance of 240 metres, which correctly rejects the pair as a duplicate and routes it to the partial-overlap branch instead.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="344"/>
+  <defs><marker id="hd-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Two segments, two very different summary statistics</text>
+  <path d="M60,112 L360,98 L620,92 L840,86" fill="none" stroke="#5BA8C8" stroke-width="3"/>
+  <path d="M60,130 L360,118 L620,128 L840,224" fill="none" stroke="#F4A261" stroke-width="3"/>
+  <line x1="140" y1="109.9897435897436" x2="140" y2="127.9897435897436" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+  <text x="140" y="143.9897435897436" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">18 m</text>
+  <line x1="300" y1="105.96923076923076" x2="300" y2="123.96923076923076" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+  <text x="300" y="139.96923076923076" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">18 m</text>
+  <line x1="460" y1="101.94871794871796" x2="460" y2="123.94871794871796" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+  <text x="460" y="139.94871794871796" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">22 m</text>
+  <line x1="620" y1="97.92820512820514" x2="620" y2="133.92820512820515" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+  <text x="620" y="149.92820512820515" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">36 m</text>
+  <line x1="760" y1="94.41025641025641" x2="760" y2="186.4102564102564" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+  <text x="760" y="202.4102564102564" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.8">240 m</text>
+  <text x="180" y="78" text-anchor="start" font-size="11.5" fill="#2C6E8F" font-weight="700">segment A — utility feed</text>
+  <text x="440" y="190" text-anchor="start" font-size="11.5" fill="#7A4A1A" font-weight="700">segment B — OSM way</text>
+  <rect x="60" y="250" width="400" height="50" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="260.0" y="271" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">mean offset 31 m</text>
+  <text x="260.0" y="289" text-anchor="middle" font-size="11.5" fill="currentColor">passes a 50 m duplicate threshold</text>
+  <rect x="484" y="250" width="416" height="50" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="692.0" y="271" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">Hausdorff distance 240 m</text>
+  <text x="692.0" y="289" text-anchor="middle" font-size="11.5" fill="currentColor">correctly routed to the partial-overlap branch</text>
+</svg>
 
 ```python
 import geopandas as gpd
@@ -195,6 +224,30 @@ Because the merge decision is attribute-aware, this is the fix for both the leng
 ## Downstream validation
 
 Gate the deduped layer before it reaches any corridor count or buffer analysis. The assertion below fails the build on two independent conditions: a total `circuit_km` outside the range an analyst expects for the study area — the direct symptom of over- or under-merging — and any residual near-duplicate pair that is *not* a legitimate distinct-circuit overlap. This is the same audit posture used when [detecting and removing sliver polygons in GeoPandas](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/spatial-data-quality-validation/detecting-and-removing-sliver-polygons-in-geopandas/): assert the artifact is gone, do not assume the cleaner removed it.
+
+<svg viewBox="0 0 940 380" role="img" aria-label="What duplicate segments do to a circuit-kilometre total. A state extract reports 18,420 circuit kilometres before deduplication. Removing 1,180 near-duplicate segments and trimming 214 partial overlaps leaves 16,180 kilometres — the raw figure was 13.8 percent high. Because duplicates cluster on corridors that were mapped twice, the inflation is not spread evenly: it concentrates exactly where interconnection studies look hardest." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Circuit-kilometres before and after deduplication</title>
+  <desc>A pair of horizontal bars. The first, before deduplication, is 18,420 circuit kilometres, with a shaded portion marking 2,240 kilometres contributed by 1,180 near-duplicate segments and 214 partial overlaps. The second, after deduplication, is 16,180 kilometres. The difference is annotated as 13.8 percent, with a note that the duplicates concentrate on heavily mapped corridors rather than spreading evenly across the network.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="380"/>
+  <defs><marker id="dk-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The same network, counted twice in places</text>
+  <text x="40" y="76" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">before deduplication</text>
+  <rect x="40" y="88" width="868" height="52" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4"/>
+  <rect x="802" y="88" width="106" height="52" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.4"/>
+  <text x="420" y="120" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">18 420 circuit-km reported</text>
+  <text x="855" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">2 240 km</text>
+  <text x="855" y="158" text-anchor="middle" font-size="11" fill="#7A4A1A">counted twice</text>
+  <text x="40" y="202" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">after deduplication</text>
+  <rect x="40" y="214" width="762" height="52" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4"/>
+  <text x="420" y="246" text-anchor="middle" font-size="13" fill="currentColor" font-weight="700">16 180 circuit-km</text>
+  <text x="826" y="246" text-anchor="start" font-size="12.5" fill="#1F5C3A" font-weight="700">−13.8%</text>
+  <rect x="40" y="296" width="424" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="252.0" y="317" text-anchor="middle" font-size="11.5" fill="currentColor">1 180 near-duplicates removed</text>
+  <text x="252.0" y="334" text-anchor="middle" font-size="11.5" fill="currentColor">214 partial overlaps trimmed, not deleted</text>
+  <rect x="488" y="296" width="420" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="698.0" y="317" text-anchor="middle" font-size="11.5" fill="currentColor">The inflation concentrates on twice-mapped</text>
+  <text x="698.0" y="334" text-anchor="middle" font-size="11.5" fill="currentColor">corridors — where the studies look hardest</text>
+</svg>
 
 ```python
 def assert_dedup_integrity(

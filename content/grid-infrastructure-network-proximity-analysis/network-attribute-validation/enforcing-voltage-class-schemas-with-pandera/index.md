@@ -27,6 +27,7 @@ Three compounding causes account for nearly every broken voltage-class contract,
 3. **Null keys and coercion surprises.** A null `asset_id` or `voltage_kv` on the join key silently drops the row in an inner `sjoin`, understating available network capacity. And naive coercion is its own trap: `astype(int)` on `"230kV"` raises, while `pd.to_numeric(..., errors="coerce")` turns it into `NaN` — swapping a loud failure for a silent one. Coercion must be *policied*, not reflexive.
 
 <svg viewBox="0 0 1020 372" role="img" aria-label="Mapping each voltage-schema failure mode to its pandera mechanism and outcome. Type drift, meaning string voltage like 230kV versus int, is handled by a Column with dtype int and coerce set true, which parses or fails at the gate. Unknown voltage class, a value outside the standard set, is handled by a Check with isin of the allowed classes, which quarantines the offending rows. Null key and coercion surprise is handled by a Column with nullable false plus schema validation with lazy true, which collects every error before the spatial join runs. All three outcomes converge on a validated GeoDataFrame plus a quarantine table carrying failure reasons." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="1020" height="372"/>
   <title>Mapping each voltage-schema failure mode to its pandera mechanism and outcome</title>
   <desc>Three failure modes each route to a pandera mechanism and an outcome branch: type drift (string versus int) to a Column with dtype int and coerce=True, which parses or fails at the gate; unknown voltage class to a Check.isin of the allowed voltage set, which quarantines offending rows; null key and coercion surprise to a Column with nullable=False validated with lazy=True, which collects every failure before the spatial join. All outcomes converge on a validated GeoDataFrame plus a quarantine table with reasons.</desc>
   <defs>
@@ -116,6 +117,40 @@ Three compounding causes account for nearly every broken voltage-class contract,
 
 The point of a pre-flight is to surface which of the three causes is present *before* the main schema runs against the whole layer — a fast, read-only probe you can drop into a CI step or a notebook cell. It does not coerce or mutate; it reports.
 
+<svg viewBox="0 0 940 412" role="img" aria-label="What coerce equals True does to each shape a voltage cell arrives in. The string 115 becomes 115.0 and passes. The string 115 kV cannot be parsed and becomes NaN, which then fails the non-null check rather than the unit check, so the error message names the wrong problem. An empty string and None both become NaN. The integer 115000 coerces cleanly and passes every type check while being a thousand times too large. Coercion is a type operation, never a validation." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Coercion changes the value; only a check can judge it</title>
+  <desc>A table of five input values with what coercion produces and which check finally catches the problem. The string 115 coerces to 115.0 and passes. The string 115 kV coerces to NaN and is caught by the nullable check, not by a unit check, so the reported error names the wrong cause. An empty string and a None both coerce to NaN and are caught the same way. The integer 115000 coerces to 115000.0 and passes every type check, and is caught only by an explicit allowed-set or range check on nominal voltage classes.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="412"/>
+  <defs><marker id="co-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">coerce=True is a cast — it makes values typed, not correct</text>
+  <text x="60" y="70" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">as delivered</text>
+  <text x="280" y="70" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">after coercion</text>
+  <text x="470" y="70" text-anchor="start" font-size="11" fill="currentColor" font-weight="700" opacity="0.8">what actually catches it</text>
+  <rect x="40" y="82" width="868" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.55"/>
+  <text x="60" y="109" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">&quot;115&quot;</text>
+  <text x="280" y="109" text-anchor="start" font-size="12" fill="currentColor">115.0</text>
+  <text x="470" y="109" text-anchor="start" font-size="11.5" fill="currentColor">passes</text>
+  <rect x="40" y="132" width="868" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.55"/>
+  <text x="60" y="159" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">&quot;115 kV&quot;</text>
+  <text x="280" y="159" text-anchor="start" font-size="12" fill="currentColor">NaN</text>
+  <text x="470" y="159" text-anchor="start" font-size="11.5" fill="currentColor">caught by nullable, not by unit</text>
+  <rect x="40" y="182" width="868" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.55"/>
+  <text x="60" y="209" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">&quot;&quot;</text>
+  <text x="280" y="209" text-anchor="start" font-size="12" fill="currentColor">NaN</text>
+  <text x="470" y="209" text-anchor="start" font-size="11.5" fill="currentColor">caught by nullable</text>
+  <rect x="40" y="232" width="868" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.55"/>
+  <text x="60" y="259" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">None</text>
+  <text x="280" y="259" text-anchor="start" font-size="12" fill="currentColor">NaN</text>
+  <text x="470" y="259" text-anchor="start" font-size="11.5" fill="currentColor">caught by nullable</text>
+  <rect x="40" y="282" width="868" height="42" rx="6" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.2" opacity="0.55"/>
+  <text x="60" y="309" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">115000</text>
+  <text x="280" y="309" text-anchor="start" font-size="12" fill="currentColor">115000.0</text>
+  <text x="470" y="309" text-anchor="start" font-size="11.5" fill="currentColor">passes every type check — needs an allowed-set check</text>
+  <rect x="40" y="344" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="365" text-anchor="middle" font-size="11.5" fill="currentColor">The 115 kV case is the dangerous one: the failure_cases frame reports a null, so an engineer fixes the</text>
+  <text x="474.0" y="382" text-anchor="middle" font-size="11.5" fill="currentColor">nullability rule instead of the unit parsing that produced it.</text>
+</svg>
+
 ```python
 import geopandas as gpd
 import pandas as pd
@@ -152,6 +187,39 @@ An empty `unknown_classes` list and a numeric `voltage_dtype` mean the schema wi
 ## Fix implementation
 
 The corrected approach declares the contract once as a pandera `DataFrameSchema` and validates with `lazy=True` so every violation is collected in a single pass rather than aborting on the first one. Coercion is deliberate: `coerce=True` on `voltage_kv` parses clean numeric strings to `int`, but a custom check rejects anything that survives coercion yet falls outside the standard classes — coercion normalises format, the check enforces domain. Rows that fail are quarantined *with their reason*, never dropped, mirroring the quarantine-not-delete discipline the parent [network attribute validation](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/network-attribute-validation/) gate applies to status and rating fields.
+
+<svg viewBox="0 0 940 372" role="img" aria-label="What lazy validation changes about a schema run. Eager validation raises on the first bad cell, so a 42,000-row load surfaces one error per run and takes as many runs as there are distinct defects to fix. Lazy validation collects every failing check into one SchemaErrors exception with a failure_cases frame — here 1,284 rows across four checks — so one run produces the entire remediation list and the dead-letter store gets a complete record." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Eager validation reports one defect; lazy validation reports all of them</title>
+  <desc>Two panels. The eager panel shows a run stopping at row 318 with a single error message and 41,682 rows never examined, annotated as needing one run per defect. The lazy panel shows the same run completing with a failure_cases frame of 1,284 rows grouped by check: 612 rows failing the nominal voltage set, 421 failing the non-null asset identifier, 208 failing the capacity range and 43 failing the coordinate bounds. An arrow routes the failure frame to a dead-letter store while the passing rows continue downstream.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="372"/>
+  <defs><marker id="lz-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">validate(lazy=True) turns a stack trace into a work list</text>
+  <rect x="30" y="58" width="400" height="240" rx="9" fill="none" stroke="#C85B5B" stroke-width="1.2" opacity="0.6"/>
+  <text x="230" y="84" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">eager — raises on the first bad cell</text>
+  <rect x="58" y="100" width="344" height="30" rx="5" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.3"/>
+  <text x="230" y="120" text-anchor="middle" font-size="11" fill="currentColor">SchemaError at row 318: voltage_kv = 1150</text>
+  <text x="230" y="158" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.9">41 682 rows never examined</text>
+  <text x="230" y="182" text-anchor="middle" font-size="12" fill="#7A4A1A" font-weight="700">one defect per run</text>
+  <text x="230" y="214" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85">fix · rerun · fix · rerun</text>
+  <text x="230" y="248" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.85">four defects = four full passes</text>
+  <rect x="470" y="58" width="440" height="240" rx="9" fill="none" stroke="#3D8B5F" stroke-width="1.2" opacity="0.6"/>
+  <text x="690" y="84" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">lazy — collects every failing check</text>
+  <rect x="498" y="104" width="384" height="34" rx="5" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="514" y="126" text-anchor="start" font-size="11" fill="currentColor">voltage_kv not in nominal set</text>
+  <text x="868" y="126" text-anchor="end" font-size="11" fill="currentColor" font-weight="700">612 rows</text>
+  <rect x="498" y="146" width="384" height="34" rx="5" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="514" y="168" text-anchor="start" font-size="11" fill="currentColor">asset_id null</text>
+  <text x="868" y="168" text-anchor="end" font-size="11" fill="currentColor" font-weight="700">421 rows</text>
+  <rect x="498" y="188" width="384" height="34" rx="5" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="514" y="210" text-anchor="start" font-size="11" fill="currentColor">capacity_mw out of range</text>
+  <text x="868" y="210" text-anchor="end" font-size="11" fill="currentColor" font-weight="700">208 rows</text>
+  <rect x="498" y="230" width="384" height="34" rx="5" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2"/>
+  <text x="514" y="252" text-anchor="start" font-size="11" fill="currentColor">coordinates outside study area</text>
+  <text x="868" y="252" text-anchor="end" font-size="11" fill="currentColor" font-weight="700">43 rows</text>
+  <text x="690" y="288" text-anchor="middle" font-size="11.5" fill="#1F5C3A" font-weight="700">1 284 failing rows, one exception, one work list</text>
+  <rect x="30" y="320" width="880" height="28" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="470.0" y="340" text-anchor="middle" font-size="11.5" fill="currentColor">failure_cases carries column, check, failing value and index — enough to write the dead-letter record without re-reading the source.</text>
+</svg>
 
 ```python
 import geopandas as gpd

@@ -27,13 +27,13 @@ Four compounding causes account for nearly every broken single-site `ModelChain`
 3. **Unknown SAM module or inverter key.** `pvlib.pvsystem.retrieve_sam('SandiaMod')` returns a table whose column labels are mangled device names. A copied-in name with the wrong punctuation raises `KeyError` at model-build time, and a *close-but-wrong* name silently selects a different device with a different power rating.
 4. **Missing temperature-model parameters or AC/DC confusion.** Omit `temperature_model_parameters` and pvlib either errors or falls back to a default set that does not match your mounting. Separately, reading `mc.results.dc` (DC power, or a DataFrame of currents and voltages) when you meant `mc.results.ac` inflates the yield by the inverter's conversion loss and ignores clipping entirely.
 
-<svg viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision flow mapping four ModelChain failure causes to their fixes. A weather DataFrame enters a timezone gate; a naive index is localized to the site timezone. It then reaches an irradiance-component gate; if DNI and DHI are absent, an Erbs decomposition derives them from GHI. Next a device-key gate checks that the module and inverter names exist in the Sandia database, raising KeyError otherwise. Finally the ModelChain runs and the AC result — not the DC result — is integrated to energy and a capacity factor." style="max-width:100%;height:auto;font-family:inherit">
+<svg viewBox="0 20 900 332" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision flow mapping four ModelChain failure causes to their fixes. A weather DataFrame enters a timezone gate; a naive index is localized to the site timezone. It then reaches an irradiance-component gate; if DNI and DHI are absent, an Erbs decomposition derives them from GHI. Next a device-key gate checks that the module and inverter names exist in the Sandia database, raising KeyError otherwise. Finally the ModelChain runs and the AC result — not the DC result — is integrated to energy and a capacity factor." style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="20" width="900" height="332"/>
   <title>Mapping four ModelChain failure causes to their fixes</title>
   <desc>A left-to-right pipeline. A weather DataFrame enters a timezone-parity gate; a naive index branches down to a localize-to-site-timezone fix. The stream then reaches an irradiance-component gate; missing DNI and DHI branch down to an Erbs decomposition that derives beam and diffuse from GHI. Next, a device-key gate verifies module and inverter names exist in the Sandia database and raises a KeyError otherwise. The validated inputs reach the ModelChain run node, whose AC result — explicitly not the DC result — feeds an integrate-to-energy node emitting MWh and a capacity factor.</desc>
   <defs>
     <marker id="pv-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker>
   </defs>
-  <rect width="900" height="560" fill="none"/>
   <!-- Input -->
   <rect x="24" y="60" width="150" height="46" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
   <text x="99" y="80" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">weather df</text>
@@ -87,6 +87,41 @@ Four compounding causes account for nearly every broken single-site `ModelChain`
 
 The naive call below is the broken pattern: it hands pvlib a raw weather frame and trusts that whatever comes back is meaningful.
 
+<svg viewBox="0 0 940 404" role="img" aria-label="What each pvlib model expects before it will run. PVWatts needs only a DC rating, a temperature coefficient and a system loss percentage, which is why it works from a nameplate. SAPM needs a full module parameter set from the Sandia database plus mounting coefficients. The CEC model needs the six single-diode parameters. Choosing a model is therefore choosing what data must exist — and a missing parameter fails at ModelChain construction, not at run time." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Three PV models, three very different input requirements</title>
+  <desc>A comparison of three pvlib model choices. PVWatts requires a DC nameplate rating, a power temperature coefficient and an aggregate loss percentage, is available from any datasheet, and is suited to portfolio screening. SAPM requires the full Sandia module parameter set and mounting configuration coefficients, is available only for modules in the Sandia database, and is suited to detailed design. The CEC single-diode model requires six diode parameters, is available from the CEC module library, and is suited to bankable energy assessments. A note records that a missing parameter raises at construction time rather than during the run.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="404"/>
+  <defs><marker id="pm2-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The model you choose is the data you must already have</text>
+  <rect x="40" y="62" width="272" height="236" rx="9" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4" opacity="0.5"/>
+  <text x="176" y="90" text-anchor="middle" font-size="13.5" fill="currentColor" font-weight="700">PVWatts</text>
+  <text x="176" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">pdc0 — DC nameplate</text>
+  <text x="176" y="144" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">gamma_pdc — temp coeff</text>
+  <text x="176" y="166" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">losses — aggregate %</text>
+  <text x="176" y="226" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">any datasheet</text>
+  <text x="176" y="246" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">availability</text>
+  <text x="176" y="276" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">portfolio screening</text>
+  <rect x="336" y="62" width="272" height="236" rx="9" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.4" opacity="0.5"/>
+  <text x="472" y="90" text-anchor="middle" font-size="13.5" fill="currentColor" font-weight="700">SAPM</text>
+  <text x="472" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">full Sandia parameter set</text>
+  <text x="472" y="144" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">mounting coefficients a, b</text>
+  <text x="472" y="166" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">deltaT for the rack type</text>
+  <text x="472" y="226" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">Sandia database only</text>
+  <text x="472" y="246" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">availability</text>
+  <text x="472" y="276" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">detailed design</text>
+  <rect x="632" y="62" width="272" height="236" rx="9" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4" opacity="0.5"/>
+  <text x="768" y="90" text-anchor="middle" font-size="13.5" fill="currentColor" font-weight="700">CEC single diode</text>
+  <text x="768" y="122" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">I_L_ref, I_o_ref, R_s</text>
+  <text x="768" y="144" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">R_sh_ref, a_ref, Adjust</text>
+  <text x="768" y="166" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">from the CEC library</text>
+  <text x="768" y="226" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">CEC module library</text>
+  <text x="768" y="246" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">availability</text>
+  <text x="768" y="276" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">bankable assessment</text>
+  <rect x="40" y="320" width="864" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="472.0" y="341" text-anchor="middle" font-size="11.5" fill="currentColor">A missing parameter raises when the ModelChain is constructed, not part-way through an 8 760-hour run —</text>
+  <text x="472.0" y="358" text-anchor="middle" font-size="11.5" fill="currentColor">so validate the module dictionary in the pre-flight step and fail before the loop starts.</text>
+</svg>
+
 ```python
 import pvlib
 
@@ -137,6 +172,46 @@ def preflight_weather(weather: pd.DataFrame, site_tz: str,
 ## Fix Implementation
 
 The corrected function localizes the index to the site timezone, decomposes GHI when the beam and diffuse components are missing, builds the `Location` and `PVSystem` with explicit temperature-model parameters, and reads `results.ac` — never `results.dc`. Every parameter is justified: `erbs` is a fast, well-validated GHI decomposition; the `open_rack_glass_glass` SAPM thermal set matches ground-mount arrays; and the AC series is integrated to MWh via the energy sum above, with all irradiance handled in a projected context consistent with the site's declared `EPSG:4326` coordinates.
+
+<svg viewBox="0 0 940 396" role="img" aria-label="A clear June day for a 125 megawatt DC array behind a 100 megawatt AC inverter. The DC curve peaks near 118 megawatts, but AC output flattens at 100 from about 10:40 to 15:20 — the plateau is clipping, and the area above the plateau is the energy the inverter cannot pass. On this day it is 214 megawatt-hours, about 4.1 percent of the day. A model that reports DC output as generation never shows the plateau." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>What clipping looks like in an hourly profile</title>
+  <desc>An hourly profile over one clear June day. A DC power curve rises from sunrise to a peak near 118 megawatts at solar noon and falls to sunset. An AC curve follows it until it reaches the 100 megawatt inverter rating at about 10:40, then runs flat until about 15:20, when it drops back below the rating and rejoins the DC curve. The area between the two curves during the plateau is shaded and annotated as 214 megawatt-hours of clipped energy, about 4.1 percent of the day.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="396"/>
+  <defs><marker id="cp-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">One clear June day: 125 MW DC behind a 100 MW AC inverter</text>
+  <line x1="100" y1="288" x2="880" y2="288" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="100" y1="64" x2="100" y2="288" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="96" y1="288.0" x2="880" y2="288.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="292.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0 MW</text>
+  <line x1="96" y1="204.15384615384613" x2="880" y2="204.15384615384613" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="208.15384615384613" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">50 MW</text>
+  <line x1="96" y1="120.30769230769229" x2="880" y2="120.30769230769229" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="90" y="124.30769230769229" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">100 MW</text>
+  <line x1="145.88235294117646" y1="288" x2="145.88235294117646" y2="293" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="145.88235294117646" y="308" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">05:00</text>
+  <line x1="283.52941176470586" y1="288" x2="283.52941176470586" y2="293" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="283.52941176470586" y="308" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">08:00</text>
+  <line x1="421.1764705882353" y1="288" x2="421.1764705882353" y2="293" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="421.1764705882353" y="308" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">11:00</text>
+  <line x1="558.8235294117646" y1="288" x2="558.8235294117646" y2="293" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="558.8235294117646" y="308" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">14:00</text>
+  <line x1="696.470588235294" y1="288" x2="696.470588235294" y2="293" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="696.470588235294" y="308" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">17:00</text>
+  <line x1="834.1176470588235" y1="288" x2="834.1176470588235" y2="293" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="834.1176470588235" y="308" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">20:00</text>
+  <path d="M100.0,288.0 L104.6,288.0 L109.2,288.0 L113.8,288.0 L118.4,288.0 L122.9,288.0 L127.5,288.0 L132.1,288.0 L136.7,288.0 L141.3,288.0 L145.9,288.0 L150.5,288.0 L155.1,288.0 L159.6,288.0 L164.2,288.0 L168.8,288.0 L173.4,288.0 L178.0,288.0 L182.6,288.0 L187.2,288.0 L191.8,288.0 L196.4,288.0 L200.9,288.0 L205.5,288.0 L210.1,288.0 L214.7,288.0 L219.3,288.0 L223.9,288.0 L228.5,288.0 L233.1,288.0 L237.6,288.0 L242.2,288.0 L246.8,288.0 L251.4,288.0 L256.0,287.7 L260.6,287.1 L265.2,286.2 L269.8,285.0 L274.4,283.6 L278.9,281.8 L283.5,279.8 L288.1,277.5 L292.7,275.0 L297.3,272.2 L301.9,269.1 L306.5,265.8 L311.1,262.3 L315.6,258.5 L320.2,254.6 L324.8,250.4 L329.4,246.1 L334.0,241.6 L338.6,237.0 L343.2,232.2 L347.8,227.2 L352.4,222.2 L356.9,217.1 L361.5,211.8 L366.1,206.5 L370.7,201.2 L375.3,195.8 L379.9,190.4 L384.5,185.0 L389.1,179.6 L393.6,174.3 L398.2,168.9 L402.8,163.7 L407.4,158.5 L412.0,153.4 L416.6,148.4 L421.2,143.5 L425.8,138.8 L430.4,134.2 L434.9,129.8 L439.5,125.6 L444.1,121.5 L448.7,117.7 L453.3,114.0 L457.9,110.6 L462.5,107.5 L467.1,104.5 L471.6,101.8 L476.2,99.4 L480.8,97.3 L485.4,95.4 L490.0,93.8 L494.6,92.5 L499.2,91.4 L503.8,90.7 L508.4,90.3 L512.9,90.1 L517.5,90.3 L522.1,90.7 L526.7,91.4 L531.3,92.5 L535.9,93.8 L540.5,95.4 L545.1,97.3 L549.6,99.4 L554.2,101.8 L558.8,104.5 L563.4,107.5 L568.0,110.6 L572.6,114.0 L577.2,117.7 L581.8,121.5 L586.4,125.6 L590.9,129.8 L595.5,134.2 L600.1,138.8 L604.7,143.5 L609.3,148.4 L613.9,153.4 L618.5,158.5 L623.1,163.7 L627.6,168.9 L632.2,174.3 L636.8,179.6 L641.4,185.0 L646.0,190.4 L650.6,195.8 L655.2,201.2 L659.8,206.5 L664.4,211.8 L668.9,217.1 L673.5,222.2 L678.1,227.2 L682.7,232.2 L687.3,237.0 L691.9,241.6 L696.5,246.1 L701.1,250.4 L705.6,254.6 L710.2,258.5 L714.8,262.3 L719.4,265.8 L724.0,269.1 L728.6,272.2 L733.2,275.0 L737.8,277.5 L742.4,279.8 L746.9,281.8 L751.5,283.6 L756.1,285.0 L760.7,286.2 L765.3,287.1 L769.9,287.7 L774.5,288.0 L779.1,288.0 L783.6,288.0 L788.2,288.0 L792.8,288.0 L797.4,288.0 L802.0,288.0 L806.6,288.0 L811.2,288.0 L815.8,288.0 L820.4,288.0 L824.9,288.0 L829.5,288.0 L834.1,288.0 L838.7,288.0 L843.3,288.0 L847.9,288.0 L852.5,288.0 L857.1,288.0 L861.6,288.0 L866.2,288.0 L870.8,288.0 L875.4,288.0 L880.0,288.0" fill="none" stroke="#5BA8C8" stroke-width="2.4" stroke-dasharray="6 4"/>
+  <path d="M100.0,288.0 L104.6,288.0 L109.2,288.0 L113.8,288.0 L118.4,288.0 L122.9,288.0 L127.5,288.0 L132.1,288.0 L136.7,288.0 L141.3,288.0 L145.9,288.0 L150.5,288.0 L155.1,288.0 L159.6,288.0 L164.2,288.0 L168.8,288.0 L173.4,288.0 L178.0,288.0 L182.6,288.0 L187.2,288.0 L191.8,288.0 L196.4,288.0 L200.9,288.0 L205.5,288.0 L210.1,288.0 L214.7,288.0 L219.3,288.0 L223.9,288.0 L228.5,288.0 L233.1,288.0 L237.6,288.0 L242.2,288.0 L246.8,288.0 L251.4,288.0 L256.0,287.7 L260.6,287.1 L265.2,286.2 L269.8,285.0 L274.4,283.6 L278.9,281.8 L283.5,279.8 L288.1,277.5 L292.7,275.0 L297.3,272.2 L301.9,269.1 L306.5,265.8 L311.1,262.3 L315.6,258.5 L320.2,254.6 L324.8,250.4 L329.4,246.1 L334.0,241.6 L338.6,237.0 L343.2,232.2 L347.8,227.2 L352.4,222.2 L356.9,217.1 L361.5,211.8 L366.1,206.5 L370.7,201.2 L375.3,195.8 L379.9,190.4 L384.5,185.0 L389.1,179.6 L393.6,174.3 L398.2,168.9 L402.8,163.7 L407.4,158.5 L412.0,153.4 L416.6,148.4 L421.2,143.5 L425.8,138.8 L430.4,134.2 L434.9,129.8 L439.5,125.6 L444.1,121.5 L448.7,120.3 L453.3,120.3 L457.9,120.3 L462.5,120.3 L467.1,120.3 L471.6,120.3 L476.2,120.3 L480.8,120.3 L485.4,120.3 L490.0,120.3 L494.6,120.3 L499.2,120.3 L503.8,120.3 L508.4,120.3 L512.9,120.3 L517.5,120.3 L522.1,120.3 L526.7,120.3 L531.3,120.3 L535.9,120.3 L540.5,120.3 L545.1,120.3 L549.6,120.3 L554.2,120.3 L558.8,120.3 L563.4,120.3 L568.0,120.3 L572.6,120.3 L577.2,120.3 L581.8,121.5 L586.4,125.6 L590.9,129.8 L595.5,134.2 L600.1,138.8 L604.7,143.5 L609.3,148.4 L613.9,153.4 L618.5,158.5 L623.1,163.7 L627.6,168.9 L632.2,174.3 L636.8,179.6 L641.4,185.0 L646.0,190.4 L650.6,195.8 L655.2,201.2 L659.8,206.5 L664.4,211.8 L668.9,217.1 L673.5,222.2 L678.1,227.2 L682.7,232.2 L687.3,237.0 L691.9,241.6 L696.5,246.1 L701.1,250.4 L705.6,254.6 L710.2,258.5 L714.8,262.3 L719.4,265.8 L724.0,269.1 L728.6,272.2 L733.2,275.0 L737.8,277.5 L742.4,279.8 L746.9,281.8 L751.5,283.6 L756.1,285.0 L760.7,286.2 L765.3,287.1 L769.9,287.7 L774.5,288.0 L779.1,288.0 L783.6,288.0 L788.2,288.0 L792.8,288.0 L797.4,288.0 L802.0,288.0 L806.6,288.0 L811.2,288.0 L815.8,288.0 L820.4,288.0 L824.9,288.0 L829.5,288.0 L834.1,288.0 L838.7,288.0 L843.3,288.0 L847.9,288.0 L852.5,288.0 L857.1,288.0 L861.6,288.0 L866.2,288.0 L870.8,288.0 L875.4,288.0 L880.0,288.0" fill="none" stroke="#3D8B5F" stroke-width="2.8"/>
+  <path d="M448.7,120.3 L448.7,117.7 L453.3,114.0 L457.9,110.6 L462.5,107.5 L467.1,104.5 L471.6,101.8 L476.2,99.4 L480.8,97.3 L485.4,95.4 L490.0,93.8 L494.6,92.5 L499.2,91.4 L503.8,90.7 L508.4,90.3 L512.9,90.1 L517.5,90.3 L522.1,90.7 L526.7,91.4 L531.3,92.5 L535.9,93.8 L540.5,95.4 L545.1,97.3 L549.6,99.4 L554.2,101.8 L558.8,104.5 L563.4,107.5 L568.0,110.6 L572.6,114.0 L577.2,117.7 L577.2,120.3 Z" fill="#FFE3BE" fill-opacity="0.85" stroke="#F4A261" stroke-width="1.2"/>
+  <text x="512.9411764705883" y="100.18461538461537" text-anchor="middle" font-size="11.5" fill="#7A4A1A" font-weight="700">214 MWh clipped — 4.1% of the day</text>
+  <text x="806.5882352941176" y="112.30769230769229" text-anchor="end" font-size="11" fill="#1F5C3A" font-weight="700">AC rating 100 MW</text>
+  <text x="301.88235294117646" y="190.73846153846154" text-anchor="middle" font-size="11.5" fill="#2C6E8F" font-weight="700">DC</text>
+  <rect x="100" y="322" width="372" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="286.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">The plateau is the whole story: outside it,</text>
+  <text x="286.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">AC and DC differ only by conversion loss</text>
+  <rect x="490" y="322" width="390" height="48" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="685.0" y="343" text-anchor="middle" font-size="11.5" fill="currentColor">mc.results.ac is what a meter sees;</text>
+  <text x="685.0" y="360" text-anchor="middle" font-size="11.5" fill="currentColor">mc.results.dc is not generation</text>
+</svg>
 
 ```python
 import numpy as np

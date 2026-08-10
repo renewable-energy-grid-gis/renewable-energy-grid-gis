@@ -28,6 +28,7 @@ Four compounding causes account for nearly every broken setback calculation, and
 4. **One global setback for every county.** Setback ordinances vary by jurisdiction — property-line, occupied-dwelling, and road setbacks differ from county to county. Hard-coding a single `setback_m` applies the wrong rule to most parcels in a multi-county portfolio, and the error is invisible in the output geometry.
 
 <svg viewBox="0 0 840 384" role="img" aria-label="Four failure causes mapped to their fixes when clipping solar parcels to county setbacks. Cause one, clip or overlay run on EPSG:4326, produces areas in degrees squared, and is fixed by reprojecting to EPSG:5070 or a UTM zone before measuring. Cause two, invalid parcel rings, raises a GEOSException, and is fixed by running make_valid before the overlay. Cause three, negative-buffer collapse producing empty and multipart geometry, is fixed by dropping empties, exploding parts, and filtering by minimum area. Cause four, one global setback value producing a wrong per-county result, is fixed by joining a per-county setback rule table." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:840px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="840" height="384"/>
   <title>County setback failure causes mapped to their fixes</title>
   <desc>Four warning-coloured cause boxes on the left, each connected by an arrow to a success-coloured fix box on the right. Row one: clip or overlay on EPSG:4326 giving areas in degrees squared maps to reproject to EPSG:5070 or UTM then measure in metres squared and hectares. Row two: invalid parcel rings raising a GEOSException maps to make_valid before the overlay. Row three: negative-buffer collapse producing empty and multipart geometry maps to drop empties, explode parts, filter by minimum area. Row four: one global setback value giving a wrong per-county result maps to join a per-county setback rule table.</desc>
   <defs>
@@ -121,6 +122,48 @@ def preflight_setback_inputs(
 
 The corrected function reprojects to a metric CRS, repairs geometry, applies the per-parcel setback as a negative buffer, erases hard exclusions with `overlay(how="difference")`, then cleans up the collapse artefacts before measuring. Parameter choices are justified for solar siting: `EPSG:5070` (CONUS Albers equal-area) keeps hectare totals comparable across a multi-county portfolio; a single project can instead use its local UTM zone. The `min_fragment_m2` floor discards slivers too small to hold a module table, and `keep_geom_type=True` stops the difference from leaking stray lines or points into the result.
 
+<svg viewBox="0 0 940 420" role="img" aria-label="A worked clip of one 42 hectare parcel against three county setbacks. The gross parcel is 42.0 hectares. A 30 metre setback from the road frontage removes 2.4 hectares, a 60 metre setback from the two neighbouring dwellings removes 6.9, and a 45 metre stream buffer removes 5.3 with 0.6 hectares of that overlapping the dwelling setback. Union first, then subtract once: the buildable envelope is 28.0 hectares, not the 27.4 that subtracting each band in turn would report." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>One parcel, three setbacks, and why the bands are unioned before subtraction</title>
+  <desc>A plan view of a parcel with a road along its southern edge, two dwellings to the east, and a stream crossing its north-west corner. Three setback bands are drawn: 30 metres from the road, 60 metres around each dwelling, and 45 metres from the stream centreline. The dwelling and stream bands overlap in one small area. The remaining buildable envelope is shaded. Beside the plan, the arithmetic: 42.0 hectares gross, minus 2.4 for the road, 6.9 for the dwellings and 5.3 for the stream, with 0.6 hectares counted in two bands, giving 28.0 hectares buildable.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="420"/>
+  <defs><marker id="cl-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Overlapping setbacks: subtract the union, not the bands</text>
+  <rect x="40" y="60" width="460" height="280" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <rect x="40" y="300" width="460" height="40" rx="0" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.7"/>
+  <text x="124" y="324" text-anchor="middle" font-size="11" fill="#7A4A1A">road setback 30 m</text>
+  <line x1="40" y1="344" x2="500" y2="344" stroke="currentColor" stroke-width="2.4" opacity="0.7"/>
+  <text x="460" y="362" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">county road</text>
+  <circle cx="470" cy="130" r="74" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.55"/>
+  <circle cx="470" cy="130" r="5" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <circle cx="470" cy="230" r="74" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3" opacity="0.55"/>
+  <circle cx="470" cy="230" r="5" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <text x="392" y="84" text-anchor="end" font-size="11" fill="#7A4A1A">dwelling setbacks 60 m</text>
+  <path d="M40,130 L170,90 L250,60" fill="none" stroke="#5BA8C8" stroke-width="3" opacity="0.8"/>
+  <path d="M40,172 L190,122 L272,84 L272,60 L40,60 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.45"/>
+  <text x="136" y="156" text-anchor="middle" font-size="11" fill="#2C6E8F">stream buffer 45 m</text>
+  <text x="240" y="260" text-anchor="middle" font-size="12" fill="#1F5C3A" font-weight="700">buildable envelope</text>
+  <rect x="150" y="274" width="180" height="4" rx="2" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1" opacity="0.7"/>
+  <rect x="540" y="66" width="368" height="42" rx="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.2" opacity="0.6"/>
+  <text x="556" y="93" text-anchor="start" font-size="12" fill="currentColor">gross parcel</text>
+  <text x="892" y="93" text-anchor="end" font-size="12.5" fill="currentColor" font-weight="700">42.0 ha</text>
+  <rect x="540" y="114" width="368" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.6"/>
+  <text x="556" y="141" text-anchor="start" font-size="12" fill="currentColor">− road setback</text>
+  <text x="892" y="141" text-anchor="end" font-size="12.5" fill="currentColor" font-weight="700">2.4 ha</text>
+  <rect x="540" y="162" width="368" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.6"/>
+  <text x="556" y="189" text-anchor="start" font-size="12" fill="currentColor">− dwelling setbacks</text>
+  <text x="892" y="189" text-anchor="end" font-size="12.5" fill="currentColor" font-weight="700">6.9 ha</text>
+  <rect x="540" y="210" width="368" height="42" rx="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.2" opacity="0.6"/>
+  <text x="556" y="237" text-anchor="start" font-size="12" fill="currentColor">− stream buffer</text>
+  <text x="892" y="237" text-anchor="end" font-size="12.5" fill="currentColor" font-weight="700">5.3 ha</text>
+  <rect x="540" y="258" width="368" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.6"/>
+  <text x="556" y="285" text-anchor="start" font-size="12" fill="currentColor">+ overlap counted twice</text>
+  <text x="892" y="285" text-anchor="end" font-size="12.5" fill="currentColor" font-weight="700">0.6 ha</text>
+  <rect x="540" y="306" width="368" height="42" rx="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.2" opacity="0.6"/>
+  <text x="556" y="333" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">= buildable</text>
+  <text x="892" y="333" text-anchor="end" font-size="12.5" fill="currentColor" font-weight="700">28.0 ha</text>
+  <text x="40" y="396" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Band-by-band subtraction would report 27.4 ha — the 0.6 ha overlap removed twice.</text>
+</svg>
+
 ```python
 import geopandas as gpd
 import pandas as pd
@@ -186,6 +229,35 @@ For statewide parcel fabrics or unattended CI/CD screening runs, layer these str
 ## Downstream validation
 
 Before a buildable figure feeds a capacity model, gate it with assertions suitable for a CI/CD pipeline. The two invariants that catch the failures above are that no parcel reports a **negative** buildable area, and that buildable area never **exceeds** the source parcel area — a setback can only ever remove land, so a result larger than its parent means a CRS or geometry regression slipped through.
+
+<svg viewBox="0 0 940 340" role="img" aria-label="Four assertions that separate a correct clip from a plausible one: the clipped area must never exceed the gross parcel area, the clipped geometry must lie inside the original, every output geometry must be valid, and the count of parcels reduced to zero area must match the count of parcels genuinely fully covered. Each has a matching symptom when it fails." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Four assertions, and the specific bug each one catches</title>
+  <desc>A four-row table. Assertion one, clipped area is less than or equal to gross area, catches a clip performed in a geographic CRS where areas are meaningless. Assertion two, the clipped geometry is within the original, catches a swapped argument order in the overlay. Assertion three, all geometries report valid, catches self-intersections introduced by the difference operation. Assertion four, the count of zero-area outputs matches the count of fully covered parcels, catches an over-broad setback union.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="340"/>
+  <defs><marker id="ca-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">What each assertion is actually protecting against</text>
+  <rect x="40" y="62" width="400" height="52" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.3"/>
+  <text x="240" y="94" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">area_clipped &lt;= area_gross</text>
+  <line x1="444" y1="88" x2="476" y2="88" stroke="currentColor" stroke-width="1.4" marker-end="url(#ca-arr)"/>
+  <rect x="484" y="62" width="416" height="52" rx="7" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.6"/>
+  <text x="692" y="94" text-anchor="middle" font-size="11.5" fill="currentColor">a clip run in a geographic CRS</text>
+  <rect x="40" y="124" width="400" height="52" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.3"/>
+  <text x="240" y="156" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">clipped.within(original).all()</text>
+  <line x1="444" y1="150" x2="476" y2="150" stroke="currentColor" stroke-width="1.4" marker-end="url(#ca-arr)"/>
+  <rect x="484" y="124" width="416" height="52" rx="7" fill="none" stroke="#3D8B5F" stroke-width="1.1" opacity="0.6"/>
+  <text x="692" y="156" text-anchor="middle" font-size="11.5" fill="currentColor">the overlay arguments were swapped</text>
+  <rect x="40" y="186" width="400" height="52" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.3"/>
+  <text x="240" y="218" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">clipped.is_valid.all()</text>
+  <line x1="444" y1="212" x2="476" y2="212" stroke="currentColor" stroke-width="1.4" marker-end="url(#ca-arr)"/>
+  <rect x="484" y="186" width="416" height="52" rx="7" fill="none" stroke="#F4A261" stroke-width="1.1" opacity="0.6"/>
+  <text x="692" y="218" text-anchor="middle" font-size="11.5" fill="currentColor">difference() introduced a self-intersection</text>
+  <rect x="40" y="248" width="400" height="52" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.3"/>
+  <text x="240" y="280" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">n_zero_area == n_fully_covered</text>
+  <line x1="444" y1="274" x2="476" y2="274" stroke="currentColor" stroke-width="1.4" marker-end="url(#ca-arr)"/>
+  <rect x="484" y="248" width="416" height="52" rx="7" fill="none" stroke="#C85B5B" stroke-width="1.1" opacity="0.6"/>
+  <text x="692" y="280" text-anchor="middle" font-size="11.5" fill="currentColor">the setback union swallowed whole parcels</text>
+  <text x="40" y="322" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Assertions are cheap; a permitting submission built on a swapped overlay is not.</text>
+</svg>
 
 ```python
 def assert_buildable_integrity(

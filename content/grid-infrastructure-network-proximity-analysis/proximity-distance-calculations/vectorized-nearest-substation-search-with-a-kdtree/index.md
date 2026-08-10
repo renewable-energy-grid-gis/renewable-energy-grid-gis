@@ -28,6 +28,7 @@ Four compounding causes turn a one-line `tree.query()` into a corrupted screen, 
 The decision is entirely about what geometry you are measuring *to*.
 
 <svg viewBox="0 0 900 470" role="img" aria-label="Decision flow for choosing a nearest-neighbour method. Start from the target geometry you are measuring to. If the targets are points, such as substation locations, and both layers share a projected CRS in metres, use scipy cKDTree: build the tree once over the substation coordinates and query the site points for the k nearest, which scales as N log M. If the targets are lines or polygons, such as transmission conductors or substation footprints, use geopandas sjoin_nearest, which measures true point-to-geometry distance. A warning branch marks the failure case where a KDTree is built on unprojected lon/lat degrees, yielding distances in degrees rather than metres." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="900" height="470"/>
   <title>Choosing cKDTree versus sjoin_nearest by target geometry</title>
   <desc>A decision flow that starts from the target geometry. Point targets in a shared projected CRS route to scipy cKDTree, built once over substation coordinates and queried for the k nearest at N log M cost. Line or polygon targets route to geopandas sjoin_nearest for true point-to-geometry distance. An amber warning branch marks the failure of building a KDTree on unprojected lon/lat degrees, which returns distances in degrees not metres.</desc>
   <defs>
@@ -135,6 +136,56 @@ The `is_geographic` check is the load-bearing one: it is the difference between 
 
 The corrected function builds the tree **once** over the substation coordinates, then issues a single vectorized query for all site points asking for the *k* nearest. It returns a tidy frame carrying `nearest_substation_id` and `distance_m` — the identifier, not just an index, so the result survives a reindex downstream.
 
+<svg viewBox="0 0 940 392" role="img" aria-label="When to ask a tree for k nearest neighbours and when to ask for everything inside a radius. A k-query always returns k answers, even when the nearest substation is 140 kilometres away and irrelevant; a radius query returns nothing in that case, which is the correct answer for a screen. Conversely a radius query in a dense corridor can return 60 candidates when the workflow only needs the closest three. The production pattern asks for k with an explicit distance_upper_bound, which gives both." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>k nearest, radius, or k nearest with a distance bound</title>
+  <desc>Three small plan views of the same query point. The first, a k equals 3 query in a sparse area, returns three substations at 22, 96 and 141 kilometres — two of which are useless. The second, a radius query at 30 kilometres in a dense corridor, returns 60 candidates where three were wanted. The third, k equals 3 with a distance upper bound of 30 kilometres, returns only the substations that are both among the nearest three and inside the bound — one in the sparse case and three in the dense one.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="392"/>
+  <defs><marker id="kr-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">Ask for the right thing: k, radius, or k inside a bound</text>
+  <rect x="40" y="60" width="280" height="210" rx="8" fill="none" stroke="#F4A261" stroke-width="1.2" opacity="0.6"/>
+  <text x="180.0" y="84" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">dense corridor</text>
+  <circle cx="180.0" cy="168" r="6" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <circle cx="180.0" cy="168" r="66" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.4" opacity="0.4"/>
+  <circle cx="204.0" cy="168.0" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="212.04293994002424" cy="186.5" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="205.0" cy="211.30127018922192" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="180.0" cy="231.0" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="168.0" cy="188.78460969082653" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="147.95706005997576" cy="186.5" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="130.0" cy="168.0" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="125.44039956158036" cy="136.50000000000003" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="168.0" cy="147.21539030917347" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="180.0" cy="131.0" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="205.0" cy="124.69872981077808" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <circle cx="234.5596004384196" cy="136.49999999999997" r="3.6" fill="#F4A261" stroke="#F4A261" stroke-width="0.8"/>
+  <text x="180.0" y="254" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">returns 60 candidates</text>
+  <text x="180.0" y="292" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">query_ball_point(r=30 km)</text>
+  <rect x="340" y="60" width="280" height="210" rx="8" fill="none" stroke="#F4A261" stroke-width="1.2" opacity="0.6"/>
+  <text x="480.0" y="84" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">sparse area</text>
+  <circle cx="480.0" cy="168" r="6" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <circle cx="506.3274768567112" cy="182.3827661581261" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <line x1="480.0" y1="168" x2="506.3274768567112" y2="182.3827661581261" stroke="#F4A261" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+  <circle cx="422.48329018778287" cy="208.52779083306905" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <line x1="480.0" y1="168" x2="422.48329018778287" y2="208.52779083306905" stroke="#F4A261" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+  <circle cx="408.09920170500266" cy="122.5918502815243" r="5" fill="#F4A261" stroke="#F4A261" stroke-width="1"/>
+  <line x1="480.0" y1="168" x2="408.09920170500266" y2="122.5918502815243" stroke="#F4A261" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+  <text x="480.0" y="254" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">returns 22, 96 and 141 km</text>
+  <text x="480.0" y="292" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">query(k=3)</text>
+  <rect x="640" y="60" width="268" height="210" rx="8" fill="none" stroke="#3D8B5F" stroke-width="1.2" opacity="0.6"/>
+  <text x="774.0" y="84" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">either case</text>
+  <circle cx="774.0" cy="168" r="6" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <circle cx="774.0" cy="168" r="66" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.4" stroke-dasharray="4 3" opacity="0.4"/>
+  <circle cx="801.6318298200865" cy="179.6825502692595" r="5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="747.7480025608074" cy="212.88688706574143" r="5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="744.5843507195581" cy="115.70545365518471" r="5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <circle cx="817.4829305372008" cy="223.92234515803358" r="4" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+  <text x="774.0" y="254" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">returns only useful matches</text>
+  <text x="774.0" y="292" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">query(k=3, distance_upper_bound=30 km)</text>
+  <rect x="40" y="320" width="868" height="48" rx="7" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="474.0" y="341" text-anchor="middle" font-size="11.5" fill="currentColor">distance_upper_bound returns infinity for anything past the bound, so the caller filters on isfinite rather</text>
+  <text x="474.0" y="358" text-anchor="middle" font-size="11.5" fill="currentColor">than re-measuring — and a site with no substation inside the bound is correctly reported as unserved.</text>
+</svg>
+
 ```python
 import geopandas as gpd
 import numpy as np
@@ -220,6 +271,47 @@ after an $O(M \log M)$ one-time build. For 40,000 sites against 6,000 substation
 - **Chunk the site array for huge portfolios.** For millions of sites, query in slices of a few hundred thousand to cap the peak result-array size, reusing the *same* tree across slices — never rebuild it per chunk.
 - **Pass `workers=-1` for multi-core queries.** `tree.query(..., workers=-1)` parallelises the batch across all cores; the build stays single-threaded but the query dominates at scale.
 - **Switch to `sjoin_nearest` for geometry targets.** The moment you must measure to a conductor centreline or a substation footprint edge rather than a representative point, the KDTree is the wrong structure — see the [spatial index and proximity quick reference](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/spatial-index-and-proximity-quick-reference/) for the full index-selection matrix.
+
+<svg viewBox="0 0 940 428" role="img" aria-label="How the two nearest-substation strategies scale. A pairwise scan over N sites and M substations costs N times M distance evaluations — 42,000 sites against 8,600 substations is 361 million. A cKDTree costs M log M to build once and then N log M to query — about 5.5 million operations for the same problem, roughly 65 times fewer, and the gap widens with every substation added." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>Pairwise scan versus tree query as the substation set grows</title>
+  <desc>A chart with the number of substations from 1,000 to 10,000 on the horizontal axis and operations in millions on the vertical. The pairwise curve rises linearly with the substation count for a fixed 42,000 sites, reaching 420 million at 10,000 substations. The tree curve rises only logarithmically, staying under 6 million across the whole range. Both are marked at 8,600 substations: 361 million operations against 5.5 million.</desc>
+  <rect class="svg-bg" x="0" y="0" width="940" height="428"/>
+  <defs><marker id="kd-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">42 000 candidate sites against a growing substation set</text>
+  <line x1="110" y1="280" x2="860" y2="280" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="110" y1="70" x2="110" y2="280" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+  <line x1="106" y1="280.0" x2="860" y2="280.0" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="284.0" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">0M</text>
+  <line x1="106" y1="233.63636363636363" x2="860" y2="233.63636363636363" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="237.63636363636363" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">100M</text>
+  <line x1="106" y1="187.27272727272728" x2="860" y2="187.27272727272728" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="191.27272727272728" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">200M</text>
+  <line x1="106" y1="140.9090909090909" x2="860" y2="140.9090909090909" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="144.9090909090909" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">300M</text>
+  <line x1="106" y1="94.54545454545456" x2="860" y2="94.54545454545456" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <text x="100" y="98.54545454545456" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.85">400M</text>
+  <line x1="185.0" y1="280" x2="185.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="185.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">1 000</text>
+  <line x1="410.0" y1="280" x2="410.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="410.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">4 000</text>
+  <line x1="755.0" y1="280" x2="755.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="755.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">8 600</text>
+  <line x1="860.0" y1="280" x2="860.0" y2="285" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+  <text x="860.0" y="300" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.85">10 000</text>
+  <text x="110" y="324" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.8">substations in the reference set</text>
+  <path d="M185.0,260.5 L203.8,255.7 L222.5,250.8 L241.2,245.9 L260.0,241.1 L278.8,236.2 L297.5,231.3 L316.2,226.4 L335.0,221.6 L353.8,216.7 L372.5,211.8 L391.2,207.0 L410.0,202.1 L428.8,197.2 L447.5,192.4 L466.2,187.5 L485.0,182.6 L503.8,177.8 L522.5,172.9 L541.2,168.0 L560.0,163.2 L578.8,158.3 L597.5,153.4 L616.2,148.6 L635.0,143.7 L653.8,138.8 L672.5,134.0 L691.2,129.1 L710.0,124.2 L728.8,119.3 L747.5,114.5 L766.2,109.6 L785.0,104.7 L803.8,99.9 L822.5,95.0 L841.2,90.1 L860.0,85.3" fill="none" stroke="#C85B5B" stroke-width="2.6"/>
+  <path d="M185.0,279.8 L203.8,279.8 L222.5,279.8 L241.2,279.8 L260.0,279.8 L278.8,279.8 L297.5,279.8 L316.2,279.8 L335.0,279.8 L353.8,279.8 L372.5,279.8 L391.2,279.7 L410.0,279.7 L428.8,279.7 L447.5,279.7 L466.2,279.7 L485.0,279.7 L503.8,279.7 L522.5,279.7 L541.2,279.7 L560.0,279.7 L578.8,279.7 L597.5,279.7 L616.2,279.7 L635.0,279.7 L653.8,279.7 L672.5,279.7 L691.2,279.7 L710.0,279.7 L728.8,279.7 L747.5,279.7 L766.2,279.7 L785.0,279.7 L803.8,279.7 L822.5,279.7 L841.2,279.7 L860.0,279.7" fill="none" stroke="#3D8B5F" stroke-width="2.6"/>
+  <circle cx="755.0" cy="112.62727272727273" r="5" fill="#C85B5B" stroke="#C85B5B" stroke-width="1"/>
+  <text x="743.0" y="100.62727272727273" text-anchor="end" font-size="11.5" fill="#7A4A1A" font-weight="700">361M pairwise</text>
+  <circle cx="755.0" cy="277.45" r="5" fill="#3D8B5F" stroke="#3D8B5F" stroke-width="1"/>
+  <text x="767.0" y="265.45" text-anchor="start" font-size="11.5" fill="#1F5C3A" font-weight="700">5.5M with a tree</text>
+  <rect x="110" y="348" width="366" height="48" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="293.0" y="369" text-anchor="middle" font-size="11.5" fill="currentColor">Pairwise: N × M distance evaluations</text>
+  <text x="293.0" y="386" text-anchor="middle" font-size="11.5" fill="currentColor">linear in the reference set, forever</text>
+  <rect x="494" y="348" width="366" height="48" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="677.0" y="369" text-anchor="middle" font-size="11.5" fill="currentColor">Tree: M log M once, then N log M</text>
+  <text x="677.0" y="386" text-anchor="middle" font-size="11.5" fill="currentColor">the build cost is amortised on the first query</text>
+</svg>
 
 ## Downstream validation
 

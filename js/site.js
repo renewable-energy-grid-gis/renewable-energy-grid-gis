@@ -11,6 +11,7 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
+    initTheme();
     initMobileNav();
     initCopyButtons();
     initTaskLists();
@@ -20,6 +21,43 @@
     setFooterYear();
     registerServiceWorker();
   });
+
+  /* Colour theme: the <head> bootstrap already set data-theme, so this only
+     keeps the control in sync, persists an explicit choice, and follows the OS
+     while the reader has expressed none. */
+  function initTheme() {
+    var root = document.documentElement;
+    var btn = document.getElementById("theme-toggle");
+
+    function syncLabel() {
+      if (!btn) return;
+      var dark = root.getAttribute("data-theme") === "dark";
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+      btn.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+    }
+
+    syncLabel();
+
+    if (btn) {
+      btn.addEventListener("click", function () {
+        var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        try { localStorage.setItem("reg-theme", next); } catch (e) { /* private mode */ }
+        syncLabel();
+      });
+    }
+
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    function onSchemeChange(e) {
+      var stored = null;
+      try { stored = localStorage.getItem("reg-theme"); } catch (err) { /* private mode */ }
+      if (stored) return;
+      root.setAttribute("data-theme", e.matches ? "dark" : "light");
+      syncLabel();
+    }
+    if (mq.addEventListener) mq.addEventListener("change", onSchemeChange);
+    else if (mq.addListener) mq.addListener(onSchemeChange);
+  }
 
   function initTocToggle() {
     var btn = document.querySelector(".article-meta__toc-toggle");
@@ -132,7 +170,7 @@
       var txt = (h2.textContent || "").toLowerCase();
       if (!/faq|frequently asked questions/.test(txt)) return;
       var faqList = document.createElement("div");
-      faqList.className = "faq-list";
+      faqList.className = "faq-list faq-accordion";
       var node = h2.nextElementSibling;
       var current = null;
       var toRemove = [];
@@ -140,6 +178,7 @@
         var next = node.nextElementSibling;
         if (node.tagName === "H3") {
           current = document.createElement("details");
+          current.className = "faq-item";
           var summary = document.createElement("summary");
           // Strip header anchor link from question text if present
           var question = node.cloneNode(true);

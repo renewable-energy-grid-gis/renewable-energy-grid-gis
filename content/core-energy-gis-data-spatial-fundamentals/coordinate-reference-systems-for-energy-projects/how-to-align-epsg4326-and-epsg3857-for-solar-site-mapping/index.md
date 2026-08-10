@@ -29,6 +29,7 @@ so at 45°N a footprint computed directly in EPSG:3857 is inflated by roughly 2�
 Establishing a consistent baseline means tagging every dataset explicitly on ingestion, transforming into one metric working CRS, then validating area against a known-good projection before any geometry feeds a siting or [regulatory boundary overlay](https://www.renewable-energy-grid-gis.org/core-energy-gis-data-spatial-fundamentals/regulatory-boundary-mapping/).
 
 <svg viewBox="0 0 820 264" role="img" aria-label="Three compounding causes — an implicit CRS assumption, planar arithmetic on angular coordinates, and Web Mercator scale drift — all feed a single misaligned overlay that silently returns an empty intersection. The corrective fix transforms every layer into one working CRS with an explicit CRS tag, a single pyproj.Transformer, and a make_valid topology repair." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:820px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="820" height="264"/>
   <title>How three silent CRS causes converge on a misaligned overlay, and the fix that resolves them</title>
   <desc>Left: three warning boxes — implicit CRS assumption, planar versus angular arithmetic, and Web Mercator scale drift — each arrow into a central warning node, the misaligned overlay that returns an empty intersection. The overlay arrows into a success node on the right: a single working CRS reached via an explicit CRS tag, one pyproj.Transformer call, and a make_valid repair.</desc>
   <defs>
@@ -78,6 +79,7 @@ Establishing a consistent baseline means tagging every dataset explicitly on ing
 </svg>
 
 <svg viewBox="0 0 800 448" role="img" aria-label="Line chart of the Web Mercator areal scale factor, secant squared of latitude, against latitude from 0 to 60 degrees. The factor is about 1.0 at the equator, rises gently to 1.33 at 30 degrees north, doubles to 2.0 at 45 degrees north, and climbs steeply to 4.0 at 60 degrees north, showing that area computed directly in EPSG:3857 is increasingly overstated toward the poles." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:800px;font-family:inherit">
+  <rect class="svg-bg" x="0" y="0" width="800" height="448"/>
   <title>Web Mercator areal scale factor sec&#178;&#966; versus latitude</title>
   <desc>The areal scale factor equals one over the square of the cosine of latitude. It stays near 1.0 through the low latitudes, passes 1.33 at 30 degrees north, reaches exactly 2.0 (a doubling of measured area) at 45 degrees north, and accelerates to 4.0 at 60 degrees north — so a footprint measured directly in EPSG:3857 is inflated more and more with latitude and must be verified in an equal-area or UTM frame.</desc>
   <!-- Axis lines -->
@@ -135,11 +137,49 @@ Establishing a consistent baseline means tagging every dataset explicitly on ing
 
 Surface the root cause *before* the overlay runs. The check below inspects both inputs, flags an undefined parcel CRS, detects the degrees-vs-metres mismatch by comparing coordinate magnitudes, and refuses to proceed until both layers share a frame.
 
+<svg viewBox="0 0 960 400" role="img" aria-label="The same solar parcel corner expressed in three coordinate frames, drawn on three number lines at their true magnitudes. In EPSG:4326 the corner is minus 119.702 degrees east and 36.318 degrees north; in EPSG:3857 it is minus 13,324,000 and 4,345,000 metres; in EPSG:32611 it is 256,400 east and 4,021,900 north. Because the three ranges never overlap, an intersection between an untagged degree layer and a metre layer returns an empty result rather than raising an error." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>One parcel corner, three coordinate frames, three incompatible number ranges</title>
+  <desc>Three horizontal number lines stacked vertically, each labelled with its EPSG code and axis unit. The top line spans minus 180 to 180 degrees and marks the corner at minus 119.702 degrees. The middle line spans minus 20 million to 20 million metres of Web Mercator easting and marks the same corner at minus 13.32 million. The bottom line spans zero to one million metres of UTM zone 11 north easting and marks it at 256,400. A callout notes that a planar overlay compares these numbers directly, so a degree geometry and a metre geometry never intersect and the result is silently empty.</desc>
+  <rect class="svg-bg" x="0" y="0" width="960" height="400"/>
+  <defs><marker id="nr-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="30" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">The same parcel corner, written three ways — the ranges never meet</text>
+  <text x="20" y="80" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">EPSG:4326 — degrees</text>
+  <line x1="300" y1="76" x2="900" y2="76" stroke="currentColor" stroke-width="1.4" opacity="0.55"/>
+  <line x1="300" y1="70" x2="300" y2="82" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <line x1="900" y1="70" x2="900" y2="82" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="300" y="100" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">-180</text>
+  <text x="900" y="100" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">180</text>
+  <circle cx="400.49666666666667" cy="76" r="6" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.8"/>
+  <text x="400.49666666666667" y="62" text-anchor="middle" font-size="11" fill="#1F3A60" font-weight="700">−119.702°, 36.318°</text>
+  <text x="20" y="166" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">EPSG:3857 — metres (Web Mercator)</text>
+  <line x1="300" y1="162" x2="900" y2="162" stroke="currentColor" stroke-width="1.4" opacity="0.55"/>
+  <line x1="300" y1="156" x2="300" y2="168" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <line x1="900" y1="156" x2="900" y2="168" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="300" y="186" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">-20 037 508</text>
+  <text x="900" y="186" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">20 037 508</text>
+  <circle cx="400.5141158271777" cy="162" r="6" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.8"/>
+  <text x="400.5141158271777" y="148" text-anchor="middle" font-size="11" fill="#7A4A1A" font-weight="700">−13 324 000 m, 4 345 000 m</text>
+  <text x="20" y="252" text-anchor="start" font-size="12" fill="currentColor" font-weight="700">EPSG:32611 — metres (UTM 11N)</text>
+  <line x1="300" y1="248" x2="900" y2="248" stroke="currentColor" stroke-width="1.4" opacity="0.55"/>
+  <line x1="300" y1="242" x2="300" y2="254" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <line x1="900" y1="242" x2="900" y2="254" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+  <text x="300" y="272" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">0</text>
+  <text x="900" y="272" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">1 000 000</text>
+  <circle cx="453.84000000000003" cy="248" r="6" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.8"/>
+  <text x="453.84000000000003" y="234" text-anchor="middle" font-size="11" fill="#1F5C3A" font-weight="700">256 400 m E, 4 021 900 m N</text>
+  <rect x="20" y="300" width="448" height="46" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="244.0" y="321" text-anchor="middle" font-size="11.5" fill="currentColor">overlay() compares these numbers as plain planar</text>
+  <text x="244.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">coordinates — no unit is attached to a geometry</text>
+  <rect x="492" y="300" width="448" height="46" rx="7" fill="#F6DCDC" stroke="#C85B5B" stroke-width="1.5"/>
+  <text x="716.0" y="321" text-anchor="middle" font-size="11.5" fill="currentColor">So a degree layer and a metre layer share no space:</text>
+  <text x="716.0" y="337" text-anchor="middle" font-size="11.5" fill="currentColor">the intersection is empty, and nothing raises</text>
+  <text x="20" y="380" text-anchor="start" font-size="11.5" fill="currentColor" opacity="0.85">Tag the CRS at read time, transform once, then intersect — the fix in the section above.</text>
+</svg>
+
 ```python
 import geopandas as gpd
 import rasterio
 import pyproj
-
 
 def preflight_crs_check(parcel_path: str, raster_path: str) -> dict:
     """Surface CRS mismatches before any overlay executes.
@@ -200,7 +240,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-
 def align_spatial_assets(parcel_path: str, raster_path: str, target_crs: str = "EPSG:3857"):
     # 1. Explicit CRS assignment on ingestion
     parcels = gpd.read_file(parcel_path)
@@ -258,10 +297,53 @@ For national-scale screening, CI/CD runs, and memory-constrained cloud nodes, la
 
 Gate every alignment output in CI/CD with an assertion that fails the build on CRS, emptiness, validity, or latitude-distortion regressions — the same audit posture used in [grid capacity buffer analysis](https://www.renewable-energy-grid-gis.org/grid-infrastructure-network-proximity-analysis/grid-capacity-buffer-analysis/).
 
+<svg viewBox="0 0 1100 300" role="img" aria-label="The four-assertion CI gate that every aligned overlay must pass before it is published: the working CRS is the one that was declared, the intersection is non-empty, every geometry is valid, and the areal distortion at the site latitude is under five percent. A failure at any gate quarantines the run for GIS review instead of publishing a silently misaligned layer." xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:inherit">
+  <title>The four assertions that gate a published overlay</title>
+  <desc>Four gates in a row, each drawn as a diamond. Gate one checks that the result CRS equals the declared working CRS. Gate two checks the intersection is not empty. Gate three checks every geometry reports valid. Gate four checks the areal distortion at the site latitude is under five percent. Passing all four leads to a published overlay carrying its CRS, transform and distortion metadata; failing any one routes down to a quarantine node that fails the build and queues the asset for manual review.</desc>
+  <rect class="svg-bg" x="0" y="0" width="1100" height="300"/>
+  <defs><marker id="cg-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="28" text-anchor="start" font-size="13" fill="currentColor" font-weight="700">CI gate chain — a build fails on the first assertion that does not hold</text>
+  <text x="1080" y="28" text-anchor="end" font-size="11" fill="currentColor" opacity="0.75">right = pass · down = fail</text>
+  <path d="M112,64 L198,112 L112,160 L26,112 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="112" y="108" text-anchor="middle" font-size="11.5" fill="currentColor">CRS equals</text>
+  <text x="112" y="124" text-anchor="middle" font-size="11.5" fill="currentColor">declared frame</text>
+  <text x="112" y="52" text-anchor="middle" font-size="10.5" fill="currentColor" font-weight="700" opacity="0.7">gate 1</text>
+  <line x1="200" y1="112" x2="230" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <line x1="112" y1="162" x2="112" y2="208" stroke="#F4A261" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <text x="134" y="188" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">fail</text>
+  <path d="M300,64 L386,112 L300,160 L214,112 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="300" y="108" text-anchor="middle" font-size="11.5" fill="currentColor">intersection</text>
+  <text x="300" y="124" text-anchor="middle" font-size="11.5" fill="currentColor">not empty</text>
+  <text x="300" y="52" text-anchor="middle" font-size="10.5" fill="currentColor" font-weight="700" opacity="0.7">gate 2</text>
+  <line x1="388" y1="112" x2="418" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <line x1="300" y1="162" x2="300" y2="208" stroke="#F4A261" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <text x="322" y="188" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">fail</text>
+  <path d="M488,64 L574,112 L488,160 L402,112 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="488" y="108" text-anchor="middle" font-size="11.5" fill="currentColor">all geometries</text>
+  <text x="488" y="124" text-anchor="middle" font-size="11.5" fill="currentColor">report valid</text>
+  <text x="488" y="52" text-anchor="middle" font-size="10.5" fill="currentColor" font-weight="700" opacity="0.7">gate 3</text>
+  <line x1="576" y1="112" x2="606" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <line x1="488" y1="162" x2="488" y2="208" stroke="#F4A261" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <text x="510" y="188" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">fail</text>
+  <path d="M676,64 L762,112 L676,160 L590,112 Z" fill="#DCEEF6" stroke="#5BA8C8" stroke-width="1.5"/>
+  <text x="676" y="108" text-anchor="middle" font-size="11.5" fill="currentColor">distortion</text>
+  <text x="676" y="124" text-anchor="middle" font-size="11.5" fill="currentColor">under 5%</text>
+  <text x="676" y="52" text-anchor="middle" font-size="10.5" fill="currentColor" font-weight="700" opacity="0.7">gate 4</text>
+  <line x1="676" y1="162" x2="676" y2="208" stroke="#F4A261" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <text x="698" y="188" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">fail</text>
+  <line x1="764" y1="112" x2="800" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#cg-arr)"/>
+  <rect x="806" y="78" width="262" height="69" rx="7" fill="#DDF0E2" stroke="#3D8B5F" stroke-width="1.5"/>
+  <text x="937.0" y="101" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">Publish overlay</text>
+  <text x="937.0" y="118" text-anchor="middle" font-size="11" fill="currentColor">CRS · transform · distortion</text>
+  <text x="937.0" y="135" text-anchor="middle" font-size="11" fill="currentColor">written to the audit record</text>
+  <rect x="26" y="210" width="736" height="52" rx="7" fill="#FFE3BE" stroke="#F4A261" stroke-width="1.5"/>
+  <text x="394" y="232" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="700">Quarantine — fail the build, keep the previous layer live</text>
+  <text x="394" y="250" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">the asset is queued for manual GIS review rather than silently republished</text>
+</svg>
+
 ```python
 from datetime import datetime, timezone
 import math
-
 
 def audit_alignment(intersection_gdf, expected_crs: str = "EPSG:3857",
                     site_latitude_deg: float | None = None,
